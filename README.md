@@ -1,3 +1,7 @@
+# Cricket Projectile Simulator 🏏
+
+An interactive 3D cricket physics simulator powered by Next.js and Three.js.
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
