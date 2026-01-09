@@ -5,942 +5,1147 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Grid, Trail } from '@react-three/drei';
 import * as THREE from 'three';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, RotateCcw, Settings2 } from 'lucide-react';
+import { Play, RotateCcw, Settings2, Info, Maximize2, Download } from 'lucide-react';
 
-// Loading Component
-const CanvasLoader = () => (
-  <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-sky-400 to-sky-200">
-    <div className="text-center">
-      <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-white mb-4 mx-auto"></div>
-      <p className="text-white font-bold">Loading Cricket Scene...</p>
+const Stat = ({ label, value, unit, description }) => (
+  <div className="bg-slate-900/80 backdrop-blur-md border border-green-500/40 rounded-lg px-3 py-2.5 shadow-xl group relative">
+    <div className="text-[10px] text-green-400 mb-1 font-semibold uppercase tracking-wide">{label}</div>
+    <div className="font-mono text-xl font-bold text-white">
+      {value}<span className="text-sm text-green-300 ml-1">{unit}</span>
     </div>
+    {description && (
+      <div className="absolute hidden group-hover:block bottom-full left-0 mb-2 w-56 bg-slate-900/95 border border-green-500/50 rounded-lg p-2.5 text-xs text-slate-300 z-50 shadow-2xl">
+        {description}
+      </div>
+    )}
   </div>
 );
 
-// Glass Panel Component
-const GlassPanel = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
-  <motion.div
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ type: 'spring', stiffness: 100 }}
-    className={`bg-slate-900/50 backdrop-blur-lg border border-white/10 rounded-xl p-4 pointer-events-auto ${className}`}
-  >
-    {children}
-  </motion.div>
-);
-
-// Custom Slider Component
-const Slider = ({ label, value, onChange, min, max, step, unit }: {
-  label: string;
-  value: number;
-  onChange: (value: number) => void;
-  min: number;
-  max: number;
-  step: number;
-  unit: string;
-}) => (
-  <div className="space-y-1">
-    <div className="flex justify-between items-center">
-      <label className="text-xs text-slate-300">{label}</label>
-      <motion.span
-        key={value}
-        initial={{ scale: 1.2 }}
-        animate={{ scale: 1 }}
-        className="font-mono text-sm font-bold bg-gradient-to-r from-blue-400 to-purple-600 bg-clip-text text-transparent"
-      >
-        {value}{unit}
-      </motion.span>
+const Slider = ({ label, value, onChange, min, max, step, unit, description }) => {
+  const percentage = ((value - min) / (max - min)) * 100;
+  
+  return (
+    <div className="space-y-2">
+      <div className="flex justify-between items-center">
+        <div className="flex items-center gap-1.5">
+          <span className="text-sm text-slate-200 font-medium">{label}</span>
+          {description && (
+            <div className="group relative">
+              <Info size={13} className="text-green-400 cursor-help" />
+              <div className="absolute hidden group-hover:block bottom-full left-0 mb-1 w-64 bg-slate-900/95 border border-green-500/50 rounded-lg p-2.5 text-xs text-slate-300 z-50 shadow-2xl">
+                {description}
+              </div>
+            </div>
+          )}
+        </div>
+        <span className="font-mono text-base font-bold text-green-400">
+          {value}{unit}
+        </span>
+      </div>
+      <div className="relative h-2.5 bg-slate-800/70 rounded-full overflow-hidden shadow-inner">
+        <div
+          className="absolute inset-y-0 left-0 bg-gradient-to-r from-green-500 to-emerald-400 rounded-full transition-all duration-200 shadow-lg shadow-green-500/40"
+          style={{ width: `${percentage}%` }}
+        />
+        <input
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          onChange={(e) => onChange(parseFloat(e.target.value))}
+          className="absolute inset-0 w-full opacity-0 cursor-pointer"
+        />
+      </div>
     </div>
-    <input
-      type="range"
-      min={min}
-      max={max}
-      step={step}
-      value={value}
-      onChange={(e) => onChange(parseFloat(e.target.value))}
-      className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer slider-thumb"
-      style={{
-        background: `linear-gradient(to right, #3b82f6 0%, #8b5cf6 ${((value - min) / (max - min)) * 100}%, #334155 ${((value - min) / (max - min)) * 100}%, #334155 100%)`
-      }}
-    />
-  </div>
-);
-
-// Compact Stat Card Component
-const StatCard = ({ label, value, unit }: { label: string; value: string | number; unit: string }) => (
-  <motion.div
-    initial={{ opacity: 0, x: -20 }}
-    animate={{ opacity: 1, x: 0 }}
-    className="bg-slate-950/20 backdrop-blur-sm border border-slate-800/30 rounded-md px-2 py-1"
-  >
-    <div className="text-[8px] text-slate-500 mb-0">{label}</div>
-    <div className="font-mono text-sm font-bold text-white">
-      {value}<span className="text-[10px] text-blue-400 ml-0.5">{unit}</span>
-    </div>
-  </motion.div>
-);
-
-// Projectile Component with Enhanced Visual Effects
-const Projectile = ({ position, isFlying, trail, velocity }: {
-  position: { x: number; y: number; z: number };
-  isFlying: boolean;
-  trail: any[];
-  velocity: { x: number; y: number } | null;
-}) => {
-  const meshRef = useRef<THREE.Mesh>(null);
-  const arrowRef = useRef<THREE.ArrowHelper>(null);
-  const glowRef = useRef<THREE.Mesh>(null);
-
-  useFrame(() => {
-    if (meshRef.current && position) {
-      meshRef.current.position.set(position.x, position.y, position.z);
-    }
-
-    // Pulsing glow effect based on speed
-    if (glowRef.current && isFlying) {
-      const scale = 1 + Math.sin(Date.now() * 0.01) * 0.2;
-      glowRef.current.scale.set(scale, scale, scale);
-    }
-
-    // Update velocity arrow direction and size in real-time
-    if (arrowRef.current && velocity && isFlying) {
-      const speed = Math.sqrt(velocity.x ** 2 + velocity.y ** 2);
-      const direction = new THREE.Vector3(velocity.x, velocity.y, 0).normalize();
-      const arrowLength = speed * 0.35;
-      
-      arrowRef.current.setDirection(direction);
-      arrowRef.current.setLength(arrowLength, arrowLength * 0.3, arrowLength * 0.2);
-    }
-  });
-
-  const speed = velocity ? Math.sqrt(velocity.x ** 2 + velocity.y ** 2) : 0;
-  const speedIntensity = Math.min(speed / 30, 1);
-
-  return (
-    <group>
-      {/* Multi-layered Trail System */}
-      <Trail
-        width={2}
-        length={15}
-        color={new THREE.Color(0.4, 0.7, 1)}
-        attenuation={(t) => Math.pow(t, 1.2)}
-      >
-        <Trail
-          width={3.5}
-          length={12}
-          color={new THREE.Color(0.2, 0.5, 1)}
-          attenuation={(t) => Math.pow(t, 2)}
-        >
-          <mesh ref={meshRef}>
-            <sphereGeometry args={[0.3, 32, 32]} />
-            <meshStandardMaterial
-              color="#3b82f6"
-              emissive={isFlying ? "#60a5fa" : "#3b82f6"}
-              emissiveIntensity={isFlying ? 1.5 : 0.3}
-              metalness={0.8}
-              roughness={0.1}
-            />
-          </mesh>
-        </Trail>
-      </Trail>
-      
-      {/* Dynamic Glow Sphere */}
-      {isFlying && (
-        <mesh ref={glowRef} position={[position.x, position.y, position.z]}>
-          <sphereGeometry args={[0.6, 16, 16]} />
-          <meshBasicMaterial 
-            color={new THREE.Color(0.3 + speedIntensity * 0.3, 0.6, 1)} 
-            transparent 
-            opacity={0.25 + speedIntensity * 0.15}
-            blending={THREE.AdditiveBlending}
-          />
-        </mesh>
-      )}
-
-      {/* Energy Ring Effect */}
-      {isFlying && (
-        <mesh position={[position.x, position.y, position.z]} rotation={[Math.PI / 2, 0, 0]}>
-          <ringGeometry args={[0.4, 0.65, 32]} />
-          <meshBasicMaterial 
-            color="#60a5fa" 
-            transparent 
-            opacity={0.4}
-            side={THREE.DoubleSide}
-            blending={THREE.AdditiveBlending}
-          />
-        </mesh>
-      )}
-
-      {/* Speed Lines */}
-      {isFlying && speed > 15 && velocity && (
-        <>
-          {[...Array(5)].map((_, i) => {
-            const offset = (i - 2) * 0.15;
-            return (
-              <mesh 
-                key={i}
-                position={[
-                  position.x - velocity.x * 0.1 * (i + 1),
-                  position.y - velocity.y * 0.1 * (i + 1) + offset,
-                  position.z
-                ]}
-              >
-                <sphereGeometry args={[0.08, 8, 8]} />
-                <meshBasicMaterial 
-                  color="#60a5fa" 
-                  transparent 
-                  opacity={0.6 - i * 0.12}
-                  blending={THREE.AdditiveBlending}
-                />
-              </mesh>
-            );
-          })}
-        </>
-      )}
-      
-      {/* Enhanced Velocity Vector Arrow */}
-      {isFlying && velocity && (
-        <arrowHelper
-          ref={arrowRef}
-          args={[
-            new THREE.Vector3(velocity.x, velocity.y, 0).normalize(),
-            new THREE.Vector3(position.x, position.y, position.z),
-            speed * 0.35,
-            0xffff00,
-            0.6,
-            0.4
-          ]}
-        />
-      )}
-      
-      {/* Enhanced Landing marker */}
-      {position.y <= 0.3 && !isFlying && (
-        <>
-          <mesh position={[position.x, 0.05, position.z]} rotation={[-Math.PI / 2, 0, 0]}>
-            <ringGeometry args={[0.3, 0.6, 32]} />
-            <meshBasicMaterial color="#3b82f6" transparent opacity={0.4} />
-          </mesh>
-          <mesh position={[position.x, 0.06, position.z]} rotation={[-Math.PI / 2, 0, 0]}>
-            <ringGeometry args={[0.6, 1.0, 32]} />
-            <meshBasicMaterial color="#60a5fa" transparent opacity={0.2} />
-          </mesh>
-        </>
-      )}
-    </group>
   );
 };
 
-// Enhanced Predictive Trajectory Path with Markers
-const PredictiveTrajectory = ({ angle, velocity, gravity, show }: {
-  angle: number;
-  velocity: number;
-  gravity: number;
-  show: boolean;
-}) => {
-  if (!show) return null;
-
-  const points = [];
-  const rad = (angle * Math.PI) / 180;
-  const vx = velocity * Math.cos(rad);
-  const vy = velocity * Math.sin(rad);
+export default function CricketProjectileSimulator() {
+  const canvasRef = useRef(null);
+  const sceneRef = useRef(null);
+  const rendererRef = useRef(null);
+  const cameraRef = useRef(null);
+  const ballRef = useRef(null);
+  const batsmanRef = useRef(null);
+  const batRef = useRef(null);
+  const trailRef = useRef(null);
+  const predictedPathRef = useRef(null);
+  const animationRef = useRef(null);
   
-  const totalTime = (2 * vy) / gravity;
-  
-  // Calculate apex (highest point)
-  const timeToApex = vy / gravity;
-  const apexX = -1 + vx * timeToApex; // Start from batsman position
-  const apexY = 1 + (vy * vy) / (2 * gravity);
-  
-  // Landing position
-  const landingX = -1 + vx * totalTime; // Start from batsman position
-  
-  // Generate parabolic path points
-  const numPoints = 60;
-  for (let i = 0; i <= numPoints; i++) {
-    const t = (i / numPoints) * totalTime;
-    const x = -1 + vx * t; // Start from batsman position at x = -1
-    const y = Math.max(0.15, 1 + vy * t - 0.5 * gravity * t * t);
-    points.push(new THREE.Vector3(x, y, 0));
-  }
-
-  const curve = new THREE.CatmullRomCurve3(points);
-  const tubeGeometry = new THREE.TubeGeometry(curve, 64, 0.12, 8, false);
-
-  return (
-    <group>
-      {/* Main glowing trajectory tube */}
-      <mesh geometry={tubeGeometry}>
-        <meshBasicMaterial 
-          color="#60a5fa" 
-          transparent 
-          opacity={0.5}
-        />
-      </mesh>
-      
-      {/* Outer glow */}
-      <mesh geometry={new THREE.TubeGeometry(curve, 64, 0.2, 8, false)}>
-        <meshBasicMaterial 
-          color="#3b82f6" 
-          transparent 
-          opacity={0.2}
-          blending={THREE.AdditiveBlending}
-        />
-      </mesh>
-
-      {/* Apex marker - highest point */}
-      <group position={[apexX, apexY, 0]}>
-        <mesh>
-          <sphereGeometry args={[0.25, 16, 16]} />
-          <meshBasicMaterial color="#fbbf24" transparent opacity={0.7} />
-        </mesh>
-        <mesh>
-          <ringGeometry args={[0.3, 0.5, 32]} />
-          <meshBasicMaterial 
-            color="#fbbf24" 
-            transparent 
-            opacity={0.5}
-            side={THREE.DoubleSide}
-          />
-        </mesh>
-        {/* Vertical line to ground */}
-        <line>
-          <bufferGeometry>
-            <bufferAttribute
-              attach="attributes-position"
-              count={2}
-              array={new Float32Array([0, 0, 0, 0, -apexY + 0.3, 0])}
-              itemSize={3}
-              args={[null, 3, 2] as any}
-            />
-          </bufferGeometry>
-          <lineDashedMaterial color="#fbbf24" transparent opacity={0.4} dashSize={0.3} gapSize={0.2} />
-        </line>
-      </group>
-
-      {/* Landing zone marker */}
-      <group position={[landingX, 0.05, 0]}>
-        <mesh rotation={[-Math.PI / 2, 0, 0]}>
-          <ringGeometry args={[0.5, 0.9, 32]} />
-          <meshBasicMaterial 
-            color="#10b981" 
-            transparent 
-            opacity={0.5}
-            side={THREE.DoubleSide}
-          />
-        </mesh>
-        <mesh rotation={[-Math.PI / 2, 0, 0]}>
-          <ringGeometry args={[0.9, 1.3, 32]} />
-          <meshBasicMaterial 
-            color="#10b981" 
-            transparent 
-            opacity={0.25}
-            side={THREE.DoubleSide}
-          />
-        </mesh>
-        {/* Vertical beam */}
-        <mesh position={[0, 1.5, 0]}>
-          <cylinderGeometry args={[0.06, 0.06, 3, 8]} />
-          <meshBasicMaterial color="#10b981" transparent opacity={0.4} />
-        </mesh>
-      </group>
-
-      {/* Launch point marker */}
-      <group position={[-1, 1, 0]}>
-        <mesh>
-          <sphereGeometry args={[0.2, 16, 16]} />
-          <meshBasicMaterial color="#ef4444" transparent opacity={0.7} />
-        </mesh>
-        <mesh>
-          <ringGeometry args={[0.25, 0.4, 32]} />
-          <meshBasicMaterial 
-            color="#ef4444" 
-            transparent 
-            opacity={0.5}
-            side={THREE.DoubleSide}
-          />
-        </mesh>
-      </group>
-    </group>
-  );
-};
-
-// Batsman Component
-const Batsman = ({ isSwinging }: { isSwinging: boolean }) => {
-  const batsmanRef = useRef<THREE.Group>(null);
-  const batRef = useRef<THREE.Group>(null);
-  const swingProgressRef = useRef(0);
-
-  useFrame((state, delta) => {
-    if (isSwinging && batRef.current) {
-      // Smooth swing animation over 0.5 seconds
-      swingProgressRef.current += delta * 4;
-      
-      if (swingProgressRef.current <= 1) {
-        // Swing forward (0 to PI/2)
-        const swingAngle = Math.sin(swingProgressRef.current * Math.PI) * (Math.PI / 2);
-        batRef.current.rotation.z = Math.PI / 6 - swingAngle;
-        batRef.current.rotation.y = -swingAngle * 0.3;
-      } else {
-        // Hold final position
-        batRef.current.rotation.z = Math.PI / 6 - Math.PI / 2;
-        batRef.current.rotation.y = -Math.PI / 6;
-      }
-    } else {
-      // Reset to initial position
-      swingProgressRef.current = 0;
-      if (batRef.current) {
-        batRef.current.rotation.z = Math.PI / 6;
-        batRef.current.rotation.y = 0;
-      }
-    }
-  });
-
-  return (
-    <group ref={batsmanRef} position={[-1, 0, 0.5]} rotation={[0, Math.PI / 4, 0]}>
-      {/* Body */}
-      <mesh position={[0, 1.2, 0]} castShadow>
-        <cylinderGeometry args={[0.3, 0.35, 1.2, 8]} />
-        <meshStandardMaterial color="#1e3a8a" />
-      </mesh>
-      
-      {/* Head */}
-      <mesh position={[0, 2, 0]} castShadow>
-        <sphereGeometry args={[0.25, 16, 16]} />
-        <meshStandardMaterial color="#ffdbac" />
-      </mesh>
-      
-      {/* Helmet */}
-      <mesh position={[0, 2.15, 0]} castShadow>
-        <sphereGeometry args={[0.28, 16, 16]} />
-        <meshStandardMaterial color="#1e3a8a" />
-      </mesh>
-      
-      {/* Legs */}
-      <mesh position={[-0.15, 0.5, 0]} castShadow>
-        <cylinderGeometry args={[0.12, 0.12, 1, 8]} />
-        <meshStandardMaterial color="#f5f5f5" />
-      </mesh>
-      <mesh position={[0.15, 0.5, 0]} castShadow>
-        <cylinderGeometry args={[0.12, 0.12, 1, 8]} />
-        <meshStandardMaterial color="#f5f5f5" />
-      </mesh>
-      
-      {/* Cricket Bat */}
-      <group ref={batRef} position={[-0.2, 0.8, -0.3]} rotation={[0, 0, Math.PI / 6]}>
-        {/* Blade */}
-        <mesh position={[0, 0.4, 0]} castShadow>
-          <boxGeometry args={[0.15, 0.8, 0.05]} />
-          <meshStandardMaterial color="#f5deb3" />
-        </mesh>
-        {/* Handle */}
-        <mesh position={[0, 1, 0]} castShadow>
-          <cylinderGeometry args={[0.04, 0.04, 0.4, 8]} />
-          <meshStandardMaterial color="#8b4513" />
-        </mesh>
-      </group>
-    </group>
-  );
-};
-
-// Cricket Stumps
-const Stumps = () => (
-  <group>
-    {/* Batting end stumps (behind batsman) */}
-    {[...Array(3)].map((_, i) => (
-      <mesh key={i} position={[-1.8, 0.4, -0.15 + i * 0.15]} castShadow>
-        <cylinderGeometry args={[0.04, 0.04, 0.8, 8]} />
-        <meshStandardMaterial color="#f5f5dc" />
-      </mesh>
-    ))}
-    {/* Bowling end stumps (22 yards away) */}
-    {[...Array(3)].map((_, i) => (
-      <mesh key={`bowl-${i}`} position={[18.2, 0.4, -0.15 + i * 0.15]} castShadow>
-        <cylinderGeometry args={[0.04, 0.04, 0.8, 8]} />
-        <meshStandardMaterial color="#f5f5dc" />
-      </mesh>
-    ))}
-  </group>
-);
-
-// Cricket Ground Component
-const CricketGround = () => (
-  <>
-    {/* Main grass field */}
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
-      <planeGeometry args={[100, 100]} />
-      <meshStandardMaterial color="#228B22" roughness={0.9} />
-    </mesh>
-    
-    {/* Cricket pitch strip (22 yards = 20.12m long, 3m wide) */}
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[8.2, 0.01, 0]} receiveShadow>
-      <planeGeometry args={[22, 3]} />
-      <meshStandardMaterial color="#D2B48C" roughness={0.8} />
-    </mesh>
-    
-    {/* Batting crease line (at batsman's position) */}
-    <mesh position={[-1.8, 0.02, 0]}>
-      <boxGeometry args={[0.08, 0.05, 2.6]} />
-      <meshStandardMaterial color="#ffffff" />
-    </mesh>
-    
-    {/* Bowling crease line (at bowling end) */}
-    <mesh position={[18.2, 0.02, 0]}>
-      <boxGeometry args={[0.08, 0.05, 2.6]} />
-      <meshStandardMaterial color="#ffffff" />
-    </mesh>
-    
-    {/* Popping crease (1.22m in front of batting stumps) */}
-    <mesh position={[-0.58, 0.02, 0]}>
-      <boxGeometry args={[0.05, 0.05, 3.66]} />
-      <meshStandardMaterial color="#ffffff" />
-    </mesh>
-    
-    {/* Grid lines for reference */}
-    <Grid
-      args={[100, 100]}
-      cellSize={5}
-      cellThickness={0.5}
-      cellColor="#2d5016"
-      sectionSize={10}
-      sectionThickness={1}
-      sectionColor="#3d6b1f"
-      fadeDistance={50}
-      fadeStrength={1}
-      followCamera={false}
-      position={[0, 0.02, 0]}
-    />
-  </>
-);
-
-// Ground Grid Component
-const GroundGrid = () => (
-  <>
-    <Grid
-      args={[100, 100]}
-      cellSize={1}
-      cellThickness={0.5}
-      cellColor="#334155"
-      sectionSize={5}
-      sectionThickness={1}
-      sectionColor="#475569"
-      fadeDistance={50}
-      fadeStrength={1}
-      followCamera={false}
-      infiniteGrid
-    />
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
-      <planeGeometry args={[100, 100]} />
-      <shadowMaterial opacity={0.3} />
-    </mesh>
-  </>
-);
-
-// Main Scene Component
-const Scene = ({ angle, velocity, gravity, bounce, onStatsUpdate, isLaunched, onLaunchComplete }: {
-  angle: number;
-  velocity: number;
-  gravity: number;
-  bounce: number;
-  onStatsUpdate: (stats: any) => void;
-  isLaunched: boolean;
-  onLaunchComplete: () => void;
-}) => {
-  const [position, setPosition] = useState({ x: 0, y: 1, z: 0 });
-  const [isFlying, setIsFlying] = useState(false);
-  const timeRef = useRef(0);
-  const velocityRef = useRef({ x: 0, y: 0 });
-  const startPositionRef = useRef({ x: 0, y: 0.3 }); // Track starting position for each arc
-  const maxHeightRef = useRef(0); // Track maximum height achieved
-  const totalTimeRef = useRef(0); // Track total elapsed time
-  const [trail, setTrail] = useState<any[]>([]);
-  const [currentVelocity, setCurrentVelocity] = useState<{ x: number; y: number } | null>({ x: 0, y: 0 });
-
-  useEffect(() => {
-    if (isLaunched) {
-      // Vector decomposition: Convert angle and speed into X and Y components
-      const rad = (angle * Math.PI) / 180;
-      velocityRef.current = {
-        x: velocity * Math.cos(rad), // Horizontal component (forward)
-        y: velocity * Math.sin(rad)  // Vertical component (upward)
-      };
-      
-      // Reset all tracking variables
-      timeRef.current = 0;
-      totalTimeRef.current = 0;
-      startPositionRef.current = { x: -1, y: 1 }; // Start from batsman position
-      maxHeightRef.current = 1;
-      setIsFlying(true);
-      setTrail([]);
-      setPosition({ x: -1, y: 1, z: 0 }); // Start from batsman position
-      setCurrentVelocity(velocityRef.current);
-    }
-  }, [isLaunched, angle, velocity]);
-
-  useFrame((state, delta) => {
-    // ═══════════════════════════════════════════════════════════════
-    // PHYSICS ENGINE - Classical Mechanics (Kinematics)
-    // ═══════════════════════════════════════════════════════════════
-    
-    if (!isFlying) return;
-
-    // Advance time counters
-    timeRef.current += delta;
-    totalTimeRef.current += delta;
-    const t = timeRef.current; // Time since current arc started
-
-    // ═══════════════════════════════════════════════════════════════
-    // KINEMATIC EQUATIONS (Constant Acceleration)
-    // ═══════════════════════════════════════════════════════════════
-    
-    // Position equations with initial position offset for bounces:
-    // x(t) = x₀ + v₀ₓ·t           [Uniform motion - no horizontal acceleration]
-    // y(t) = y₀ + v₀ᵧ·t - ½g·t²   [Uniformly accelerated motion - gravity acts downward]
-    
-    const newX = startPositionRef.current.x + velocityRef.current.x * t;
-    const newY = startPositionRef.current.y + velocityRef.current.y * t - 0.5 * gravity * t * t;
-
-    // Velocity equations (derivatives of position):
-    // vₓ(t) = v₀ₓ              [Constant - no air resistance]
-    // vᵧ(t) = v₀ᵧ - g·t        [Linear decrease due to gravity]
-    
-    const currentVelX = velocityRef.current.x;
-    const currentVelY = velocityRef.current.y - gravity * t;
-
-    // Track maximum height achieved during entire flight
-    if (newY > maxHeightRef.current) {
-      maxHeightRef.current = newY;
-    }
-
-    // ═══════════════════════════════════════════════════════════════
-    // COLLISION DETECTION & RESPONSE
-    // ═══════════════════════════════════════════════════════════════
-    
-    const groundLevel = 0.15; // Cricket ball radius
-    
-    if (newY <= groundLevel) {
-      // Ball has reached or passed through ground level
-      
-      // Calculate impact velocity magnitude
-      const impactSpeed = Math.abs(currentVelY);
-      
-      // Energy threshold: Below this, friction absorbs remaining energy
-      const minimumBounceVelocity = 0.5; // m/s
-      
-      if (impactSpeed > minimumBounceVelocity) {
-        // ═══════════════════════════════════════════════════════════
-        // ELASTIC COLLISION (with energy loss)
-        // ═══════════════════════════════════════════════════════════
-        
-        // Coefficient of Restitution (bounce factor):
-        // e = v_separation / v_approach
-        // Perfect elastic: e = 1.0, Perfectly inelastic: e = 0.0
-        
-        // Reverse and reduce vertical velocity (energy loss during collision)
-        velocityRef.current.y = Math.abs(currentVelY) * bounce;
-        
-        // Horizontal velocity remains constant (no friction in this model)
-        velocityRef.current.x = currentVelX;
-        
-        // Reset arc parameters for next parabolic trajectory
-        timeRef.current = 0;
-        startPositionRef.current = { x: newX, y: groundLevel };
-        
-        // Update position to ground level (prevent underground clipping)
-        setPosition({ x: newX, y: groundLevel, z: 0 });
-        setCurrentVelocity({ x: currentVelX, y: velocityRef.current.y });
-        
-      } else {
-        // ═══════════════════════════════════════════════════════════
-        // MOTION COMPLETE - Energy fully dissipated
-        // ═══════════════════════════════════════════════════════════
-        
-        setIsFlying(false);
-        setPosition({ x: newX, y: groundLevel, z: 0 });
-        setCurrentVelocity({ x: 0, y: 0 });
-        onLaunchComplete();
-        
-        // Final statistics report
-        onStatsUpdate({
-          velocityX: 0,
-          velocityY: 0,
-          maxHeight: maxHeightRef.current - 1,
-          distance: newX,
-          time: totalTimeRef.current
-        });
-      }
-      
-    } else {
-      // ═══════════════════════════════════════════════════════════
-      // PROJECTILE IN FLIGHT - Update position and statistics
-      // ═══════════════════════════════════════════════════════════
-      
-      setPosition({ x: newX, y: newY, z: 0 });
-      setCurrentVelocity({ x: currentVelX, y: currentVelY });
-      
-      // Maintain trail history (limited to last 20 positions for performance)
-      setTrail(prev => [...prev.slice(-20), { x: newX, y: newY, z: 0 }]);
-
-      // Real-time statistics update
-      onStatsUpdate({
-        velocityX: currentVelX,
-        velocityY: currentVelY,
-        maxHeight: maxHeightRef.current - 1,
-        distance: newX,
-        time: totalTimeRef.current
-      });
-    }
-  });
-
-  return (
-    <>
-      {/* Cricket field atmosphere */}
-      <color attach="background" args={['#87CEEB']} />
-      
-      {/* Bright outdoor cricket lighting */}
-      <ambientLight intensity={0.6} />
-      <directionalLight 
-        position={[10, 40, 15]} 
-        intensity={1.2} 
-        castShadow 
-        shadow-mapSize={[4096, 4096]}
-        shadow-camera-left={-30}
-        shadow-camera-right={40}
-        shadow-camera-top={50}
-        shadow-camera-bottom={-50}
-      />
-      
-      {/* Predictive Trajectory Path with Markers */}
-      <PredictiveTrajectory 
-        angle={angle} 
-        velocity={velocity} 
-        gravity={gravity} 
-        show={!isFlying}
-      />
-      
-      <Batsman isSwinging={isFlying && totalTimeRef.current < 0.5} />
-      <Stumps />
-      <Projectile 
-        position={position} 
-        isFlying={isFlying} 
-        trail={trail} 
-        velocity={currentVelocity}
-      />
-      <CricketGround />
-    </>
-  );
-};
-
-// Main App Component
-export default function ProjectileSimulator() {
   const [angle, setAngle] = useState(45);
-  const [velocity, setVelocity] = useState(20);
+  const [speed, setSpeed] = useState(28);
   const [gravity, setGravity] = useState(9.8);
-  const [bounce, setBounce] = useState(0.6);
   const [stats, setStats] = useState({
     velocityX: 0,
     velocityY: 0,
     maxHeight: 0,
-    distance: 0,
-    time: 0
+    range: 0,
+    time: 0,
+    currentHeight: 0
   });
-  const [isLaunched, setIsLaunched] = useState(false);
   const [canLaunch, setCanLaunch] = useState(true);
+  const [showInfo, setShowInfo] = useState(false);
+
+  const simulationState = useRef({
+    isFlying: false,
+    time: 0,
+    position: { x: 0, y: 1.2, z: 0 },
+    velocity: { x: 0, y: 0 },
+    maxHeight: 1.2,
+    totalTime: 0
+  });
+
+  useEffect(() => {
+    if (!canvasRef.current) return;
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x1a1a2e);
+    scene.fog = new THREE.Fog(0x1a1a2e, 80, 180);
+    sceneRef.current = scene;
+
+    const camera = new THREE.PerspectiveCamera(
+      70,
+      canvasRef.current.clientWidth / canvasRef.current.clientHeight,
+      0.1,
+      400
+    );
+    camera.position.set(-40, 35, 60);
+    camera.lookAt(20, 8, 0);
+    cameraRef.current = camera;
+
+    const renderer = new THREE.WebGLRenderer({ 
+      canvas: canvasRef.current,
+      antialias: true
+    });
+    renderer.setSize(canvasRef.current.clientWidth, canvasRef.current.clientHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    rendererRef.current = renderer;
+
+    // Ambient lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+    scene.add(ambientLight);
+
+    // Main sunlight
+    const sunLight = new THREE.DirectionalLight(0xffffee, 1.2);
+    sunLight.position.set(60, 80, 40);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.width = 4096;
+    sunLight.shadow.mapSize.height = 4096;
+    sunLight.shadow.camera.left = -100;
+    sunLight.shadow.camera.right = 100;
+    sunLight.shadow.camera.top = 100;
+    sunLight.shadow.camera.bottom = -100;
+    sunLight.shadow.camera.far = 200;
+    scene.add(sunLight);
+
+    // Stadium floodlights (4 corners)
+    const floodlightPositions = [
+      { x: -60, z: -60 },
+      { x: 60, z: -60 },
+      { x: -60, z: 60 },
+      { x: 60, z: 60 }
+    ];
+
+    floodlightPositions.forEach(pos => {
+      // Light tower
+      const towerGeometry = new THREE.CylinderGeometry(1, 1.5, 40, 8);
+      const towerMaterial = new THREE.MeshStandardMaterial({ color: 0x2a2a3e });
+      const tower = new THREE.Mesh(towerGeometry, towerMaterial);
+      tower.position.set(pos.x, 20, pos.z);
+      tower.castShadow = true;
+      scene.add(tower);
+
+      // Floodlight
+      const light = new THREE.PointLight(0xffffcc, 0.6, 120);
+      light.position.set(pos.x, 40, pos.z);
+      light.castShadow = true;
+      scene.add(light);
+
+      // Light fixture
+      const fixtureGeometry = new THREE.BoxGeometry(3, 1, 3);
+      const fixtureMaterial = new THREE.MeshStandardMaterial({
+        color: 0xffff00,
+        emissive: 0xffff00,
+        emissiveIntensity: 0.5
+      });
+      const fixture = new THREE.Mesh(fixtureGeometry, fixtureMaterial);
+      fixture.position.set(pos.x, 40, pos.z);
+      scene.add(fixture);
+    });
+
+    // Cricket Ground (grass)
+    const groundGeometry = new THREE.CircleGeometry(85, 64);
+    const groundMaterial = new THREE.MeshStandardMaterial({
+      color: 0x1a5c1a,
+      roughness: 0.9,
+      metalness: 0.05
+    });
+    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+    ground.rotation.x = -Math.PI / 2;
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    // Grass texture variation (darker stripes)
+    for (let i = -8; i <= 8; i++) {
+      if (i % 2 === 0) {
+        const stripeGeometry = new THREE.PlaneGeometry(170, 10);
+        const stripeMaterial = new THREE.MeshStandardMaterial({
+          color: 0x155c15,
+          roughness: 0.9
+        });
+        const stripe = new THREE.Mesh(stripeGeometry, stripeMaterial);
+        stripe.rotation.x = -Math.PI / 2;
+        stripe.position.set(0, 0.01, i * 10);
+        stripe.receiveShadow = true;
+        scene.add(stripe);
+      }
+    }
+
+    // 30-yard circle
+    const circleGeometry = new THREE.RingGeometry(27.4, 27.5, 64);
+    const circleMaterial = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      side: THREE.DoubleSide
+    });
+    const circle = new THREE.Mesh(circleGeometry, circleMaterial);
+    circle.rotation.x = -Math.PI / 2;
+    circle.position.y = 0.02;
+    scene.add(circle);
+
+    // Boundary rope
+    const boundaryGeometry = new THREE.TorusGeometry(75, 0.3, 16, 100);
+    const boundaryMaterial = new THREE.MeshStandardMaterial({
+      color: 0xffff00,
+      emissive: 0xffff00,
+      emissiveIntensity: 0.3
+    });
+    const boundary = new THREE.Mesh(boundaryGeometry, boundaryMaterial);
+    boundary.rotation.x = Math.PI / 2;
+    boundary.position.y = 0.3;
+    scene.add(boundary);
+
+    // Stadium stands (4 sections)
+    const createStand = (startAngle, endAngle, radius, color) => {
+      const standGeometry = new THREE.CylinderGeometry(radius + 15, radius + 10, 20, 32, 1, true, startAngle, endAngle - startAngle);
+      const standMaterial = new THREE.MeshStandardMaterial({
+        color: color,
+        side: THREE.DoubleSide,
+        roughness: 0.7
+      });
+      const stand = new THREE.Mesh(standGeometry, standMaterial);
+      stand.position.y = 10;
+      scene.add(stand);
+
+      // Seating rows
+      for (let i = 0; i < 8; i++) {
+        const seatGeometry = new THREE.CylinderGeometry(radius + 11 + i * 0.5, radius + 11 + i * 0.5, 0.5, 32, 1, true, startAngle, endAngle - startAngle);
+        const seatMaterial = new THREE.MeshStandardMaterial({
+          color: i % 2 === 0 ? 0x2a4a8a : 0x8a2a4a,
+          side: THREE.DoubleSide
+        });
+        const seat = new THREE.Mesh(seatGeometry, seatMaterial);
+        seat.position.y = 2 + i * 2;
+        scene.add(seat);
+      }
+
+      // Roof
+      const roofGeometry = new THREE.CylinderGeometry(radius + 20, radius + 18, 2, 32, 1, true, startAngle, endAngle - startAngle);
+      const roofMaterial = new THREE.MeshStandardMaterial({
+        color: 0x4a4a5e,
+        side: THREE.DoubleSide
+      });
+      const roof = new THREE.Mesh(roofGeometry, roofMaterial);
+      roof.position.y = 19;
+      scene.add(roof);
+    };
+
+    // Create 4 stands
+    createStand(0, Math.PI / 2, 80, 0x1a2a4a);
+    createStand(Math.PI / 2, Math.PI, 80, 0x2a1a4a);
+    createStand(Math.PI, 3 * Math.PI / 2, 80, 0x1a2a4a);
+    createStand(3 * Math.PI / 2, 2 * Math.PI, 80, 0x2a1a4a);
+
+    // Giant scoreboard
+    const scoreboardGeometry = new THREE.BoxGeometry(20, 12, 2);
+    const scoreboardMaterial = new THREE.MeshStandardMaterial({
+      color: 0x1a1a2e,
+      emissive: 0x2a2a4e,
+      emissiveIntensity: 0.3
+    });
+    const scoreboard = new THREE.Mesh(scoreboardGeometry, scoreboardMaterial);
+    scoreboard.position.set(0, 25, -90);
+    scene.add(scoreboard);
+
+    // Scoreboard screen
+    const screenGeometry = new THREE.PlaneGeometry(18, 10);
+    const screenMaterial = new THREE.MeshBasicMaterial({
+      color: 0x00ff00,
+      emissive: 0x00ff00,
+      emissiveIntensity: 0.5
+    });
+    const screen = new THREE.Mesh(screenGeometry, screenMaterial);
+    screen.position.set(0, 25, -88.9);
+    scene.add(screen);
+
+    // Cricket Pitch (detailed)
+    const pitchGeometry = new THREE.BoxGeometry(3.66, 0.08, 20.12);
+    const pitchMaterial = new THREE.MeshStandardMaterial({
+      color: 0xc19a6b,
+      roughness: 0.85,
+      metalness: 0.05
+    });
+    const pitch = new THREE.Mesh(pitchGeometry, pitchMaterial);
+    pitch.position.set(0, 0.04, 0);
+    pitch.receiveShadow = true;
+    scene.add(pitch);
+
+    // Pitch markings (white lines)
+    const linesMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    
+    // Popping crease at batting end
+    const creaseGeometry = new THREE.BoxGeometry(3.66, 0.01, 0.1);
+    const crease1 = new THREE.Mesh(creaseGeometry, linesMaterial);
+    crease1.position.set(0, 0.09, 0);
+    scene.add(crease1);
+
+    // Bowling crease at other end
+    const crease2 = new THREE.Mesh(creaseGeometry, linesMaterial);
+    crease2.position.set(0, 0.09, 20.12);
+    scene.add(crease2);
+
+    // Return creases
+    const returnCreaseGeometry = new THREE.BoxGeometry(0.05, 0.01, 2.64);
+    [-1.83, 1.83].forEach(x => {
+      const returnCrease1 = new THREE.Mesh(returnCreaseGeometry, linesMaterial);
+      returnCrease1.position.set(x, 0.09, -1.22);
+      scene.add(returnCrease1);
+      
+      const returnCrease2 = new THREE.Mesh(returnCreaseGeometry, linesMaterial);
+      returnCrease2.position.set(x, 0.09, 21.34);
+      scene.add(returnCrease2);
+    });
+
+    // Stumps at batting end (3 stumps)
+    const stumpGeometry = new THREE.CylinderGeometry(0.04, 0.04, 0.71, 12);
+    const stumpMaterial = new THREE.MeshStandardMaterial({
+      color: 0xfaf0e6,
+      roughness: 0.6
+    });
+
+    [-0.115, 0, 0.115].forEach(z => {
+      const stump = new THREE.Mesh(stumpGeometry, stumpMaterial);
+      stump.position.set(1, 0.395, z);
+      stump.castShadow = true;
+      scene.add(stump);
+    });
+
+    // Bails (2 bails)
+    const bailGeometry = new THREE.CylinderGeometry(0.012, 0.012, 0.13, 8);
+    const bailMaterial = new THREE.MeshStandardMaterial({ color: 0xfaf0e6 });
+    
+    [-0.06, 0.06].forEach(z => {
+      const bail = new THREE.Mesh(bailGeometry, bailMaterial);
+      bail.rotation.z = Math.PI / 2;
+      bail.position.set(1, 0.71, z);
+      scene.add(bail);
+    });
+
+    // Stumps at bowling end
+    [-0.115, 0, 0.115].forEach(z => {
+      const stump = new THREE.Mesh(stumpGeometry, stumpMaterial);
+      stump.position.set(-1, 0.395, 20.12 + z);
+      stump.castShadow = true;
+      scene.add(stump);
+    });
+
+    // Distance markers with poles
+    for (let i = 1; i <= 10; i++) {
+      const distance = i * 10;
+      
+      // Ground circle
+      const markerGeometry = new THREE.RingGeometry(0.9, 1, 32);
+      const markerMaterial = new THREE.MeshBasicMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0.6,
+        side: THREE.DoubleSide
+      });
+      const marker = new THREE.Mesh(markerGeometry, markerMaterial);
+      marker.rotation.x = -Math.PI / 2;
+      marker.position.set(distance, 0.05, 0);
+      scene.add(marker);
+      
+      // Distance pole
+      const poleGeometry = new THREE.CylinderGeometry(0.1, 0.1, 1, 8);
+      const poleMaterial = new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        emissive: 0xffffff,
+        emissiveIntensity: 0.3
+      });
+      const pole = new THREE.Mesh(poleGeometry, poleMaterial);
+      pole.position.set(distance, 0.5, -4);
+      pole.castShadow = true;
+      scene.add(pole);
+      
+      // Number marker on pole
+      const numberGeometry = new THREE.SphereGeometry(0.2, 16, 16);
+      const numberMaterial = new THREE.MeshBasicMaterial({
+        color: 0xff6b6b,
+        emissive: 0xff6b6b,
+        emissiveIntensity: 0.5
+      });
+      const number = new THREE.Mesh(numberGeometry, numberMaterial);
+      number.position.set(distance, 1.2, -4);
+      scene.add(number);
+    }
+
+    // Height reference grid
+    for (let i = 1; i <= 7; i++) {
+      const height = i * 5;
+      
+      // Horizontal line
+      const lineGeometry = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(-5, height, 0),
+        new THREE.Vector3(100, height, 0)
+      ]);
+      const lineMaterial = new THREE.LineDashedMaterial({
+        color: 0xffffff,
+        linewidth: 1,
+        dashSize: 1.5,
+        gapSize: 1,
+        transparent: true,
+        opacity: 0.25
+      });
+      const line = new THREE.Line(lineGeometry, lineMaterial);
+      line.computeLineDistances();
+      scene.add(line);
+      
+      // Height marker
+      const markerGeometry = new THREE.SphereGeometry(0.35, 16, 16);
+      const markerMaterial = new THREE.MeshBasicMaterial({
+        color: 0xff3333,
+        transparent: true,
+        opacity: 0.7
+      });
+      const marker = new THREE.Mesh(markerGeometry, markerMaterial);
+      marker.position.set(-5, height, 0);
+      scene.add(marker);
+    }
+
+    // Detailed Batsman
+    const batsmanGroup = new THREE.Group();
+    
+    // Legs with pads
+    const legGeometry = new THREE.CylinderGeometry(0.15, 0.14, 1.1, 16);
+    const padMaterial = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      roughness: 0.7,
+      metalness: 0.1
+    });
+    
+    const leftLeg = new THREE.Mesh(legGeometry, padMaterial);
+    leftLeg.position.set(-0.22, 0.55, 0);
+    leftLeg.castShadow = true;
+    batsmanGroup.add(leftLeg);
+    
+    const rightLeg = new THREE.Mesh(legGeometry, padMaterial);
+    rightLeg.position.set(0.22, 0.55, 0.15);
+    rightLeg.castShadow = true;
+    batsmanGroup.add(rightLeg);
+
+    // Pad details
+    const padDetailGeometry = new THREE.BoxGeometry(0.22, 0.85, 0.12);
+    const leftPad = new THREE.Mesh(padDetailGeometry, padMaterial);
+    leftPad.position.set(-0.22, 0.55, -0.08);
+    leftPad.castShadow = true;
+    batsmanGroup.add(leftPad);
+
+    // Body (jersey)
+    const bodyGeometry = new THREE.CylinderGeometry(0.38, 0.42, 1.5, 16);
+    const jerseyMaterial = new THREE.MeshStandardMaterial({
+      color: 0x003d99,
+      roughness: 0.6,
+      metalness: 0.2
+    });
+    const body = new THREE.Mesh(bodyGeometry, jerseyMaterial);
+    body.position.y = 1.6;
+    body.castShadow = true;
+    batsmanGroup.add(body);
+
+    // Arms
+    const armGeometry = new THREE.CylinderGeometry(0.09, 0.11, 0.75, 12);
+    
+    const leftArm = new THREE.Mesh(armGeometry, jerseyMaterial);
+    leftArm.position.set(-0.5, 1.7, 0);
+    leftArm.rotation.z = Math.PI / 5;
+    leftArm.castShadow = true;
+    batsmanGroup.add(leftArm);
+    
+    const rightArm = new THREE.Mesh(armGeometry, jerseyMaterial);
+    rightArm.position.set(0.5, 1.6, 0);
+    rightArm.rotation.z = -Math.PI / 5;
+    rightArm.castShadow = true;
+    batsmanGroup.add(rightArm);
+
+    // Gloves
+    const gloveGeometry = new THREE.SphereGeometry(0.14, 12, 12);
+    const gloveMaterial = new THREE.MeshStandardMaterial({
+      color: 0x2d5016,
+      roughness: 0.8
+    });
+    
+    const leftGlove = new THREE.Mesh(gloveGeometry, gloveMaterial);
+    leftGlove.position.set(-0.75, 1.5, 0);
+    batsmanGroup.add(leftGlove);
+    
+    const rightGlove = new THREE.Mesh(gloveGeometry, gloveMaterial);
+    rightGlove.position.set(0.75, 1.4, 0);
+    batsmanGroup.add(rightGlove);
+
+    // Head
+    const headGeometry = new THREE.SphereGeometry(0.3, 20, 20);
+    const skinMaterial = new THREE.MeshStandardMaterial({
+      color: 0xffdbac,
+      roughness: 0.8
+    });
+    const head = new THREE.Mesh(headGeometry, skinMaterial);
+    head.position.y = 2.5;
+    head.castShadow = true;
+    batsmanGroup.add(head);
+
+    // Helmet
+    const helmetGeometry = new THREE.SphereGeometry(0.34, 20, 20, 0, Math.PI * 2, 0, Math.PI / 1.7);
+    const helmetMaterial = new THREE.MeshStandardMaterial({
+      color: 0x003d99,
+      metalness: 0.7,
+      roughness: 0.3
+    });
+    const helmet = new THREE.Mesh(helmetGeometry, helmetMaterial);
+    helmet.position.y = 2.6;
+    helmet.castShadow = true;
+    batsmanGroup.add(helmet);
+
+    // Face guard
+    const guardGeometry = new THREE.BoxGeometry(0.28, 0.18, 0.02);
+    const guardMaterial = new THREE.MeshStandardMaterial({
+      color: 0x333333,
+      metalness: 0.9,
+      roughness: 0.2,
+      transparent: true,
+      opacity: 0.6
+    });
+    const guard = new THREE.Mesh(guardGeometry, guardMaterial);
+    guard.position.set(0, 2.45, 0.32);
+    batsmanGroup.add(guard);
+
+    batsmanGroup.position.set(-1.2, 0, -0.3);
+    batsmanGroup.rotation.y = Math.PI / 7;
+    scene.add(batsmanGroup);
+    batsmanRef.current = batsmanGroup;
+
+    // Cricket Bat (professional)
+    const batGroup = new THREE.Group();
+    
+    // Blade
+    const bladeGeometry = new THREE.BoxGeometry(0.13, 1.05, 0.065);
+    const bladeMaterial = new THREE.MeshStandardMaterial({
+      color: 0xf5deb3,
+      roughness: 0.4,
+      metalness: 0.1
+    });
+    const blade = new THREE.Mesh(bladeGeometry, bladeMaterial);
+    blade.position.y = 0.525;
+    blade.castShadow = true;
+    batGroup.add(blade);
+
+    // Sweet spot
+    const sweetSpotGeometry = new THREE.BoxGeometry(0.125, 0.35, 0.066);
+    const sweetSpotMaterial = new THREE.MeshStandardMaterial({
+      color: 0x8b4513,
+      roughness: 0.5
+    });
+    const sweetSpot = new THREE.Mesh(sweetSpotGeometry, sweetSpotMaterial);
+    sweetSpot.position.y = 0.45;
+    batGroup.add(sweetSpot);
+
+    // Handle
+    const handleGeometry = new THREE.CylinderGeometry(0.052, 0.048, 0.55, 16);
+    const handleMaterial = new THREE.MeshStandardMaterial({
+      color: 0x654321,
+      roughness: 0.8
+    });
+    const handle = new THREE.Mesh(handleGeometry, handleMaterial);
+    handle.position.y = 1.325;
+    batGroup.add(handle);
+
+    // Rubber grip
+    const gripGeometry = new THREE.CylinderGeometry(0.058, 0.058, 0.38, 16);
+    const gripMaterial = new THREE.MeshStandardMaterial({
+      color: 0x1a1a1a,
+      roughness: 0.95
+    });
+    const grip = new THREE.Mesh(gripGeometry, gripMaterial);
+    grip.position.y = 1.45;
+    batGroup.add(grip);
+    
+    batGroup.position.set(-0.55, 0.45, -0.45);
+    batGroup.rotation.z = Math.PI / 4;
+    batGroup.rotation.x = -Math.PI / 12;
+    scene.add(batGroup);
+    batRef.current = batGroup;
+
+    // Cricket Ball (red leather ball)
+    const ballGeometry = new THREE.SphereGeometry(0.125, 32, 32);
+    const ballMaterial = new THREE.MeshStandardMaterial({
+      color: 0xcc0000,
+      roughness: 0.65,
+      metalness: 0.15,
+      emissive: 0x440000,
+      emissiveIntensity: 0.1
+    });
+    const ball = new THREE.Mesh(ballGeometry, ballMaterial);
+    ball.position.set(0, 1.2, 0);
+    ball.castShadow = true;
+    scene.add(ball);
+    ballRef.current = ball;
+
+    // Ball seam (white stitching)
+    const seamPoints = [];
+    for (let i = 0; i <= 100; i++) {
+      const angle = (i / 100) * Math.PI * 2;
+      seamPoints.push(new THREE.Vector3(
+        Math.cos(angle) * 0.125,
+        Math.sin(angle) * 0.125,
+        0
+      ));
+    }
+    const seamGeometry = new THREE.BufferGeometry().setFromPoints(seamPoints);
+    const seamMaterial = new THREE.LineBasicMaterial({
+      color: 0xffffff,
+      linewidth: 2
+    });
+    const seam = new THREE.Line(seamGeometry, seamMaterial);
+    seam.rotation.x = Math.PI / 2;
+    ball.add(seam);
+
+    // Ball glow effect
+    const glowGeometry = new THREE.SphereGeometry(0.2, 16, 16);
+    const glowMaterial = new THREE.MeshBasicMaterial({
+      color: 0xff0000,
+      transparent: true,
+      opacity: 0.25
+    });
+    const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+    ball.add(glow);
+
+    // Ball shadow on ground
+    const shadowGeometry = new THREE.CircleGeometry(0.5, 32);
+    const shadowMaterial = new THREE.MeshBasicMaterial({
+      color: 0x000000,
+      transparent: true,
+      opacity: 0
+    });
+    const ballShadow = new THREE.Mesh(shadowGeometry, shadowMaterial);
+    ballShadow.rotation.x = -Math.PI / 2;
+    ballShadow.position.y = 0.02;
+    scene.add(ballShadow);
+
+    // Actual trajectory trail (thick red)
+    const trailMaterial = new THREE.LineBasicMaterial({
+      color: 0xff2222,
+      linewidth: 6,
+      transparent: true,
+      opacity: 0.95
+    });
+    const trailGeometry = new THREE.BufferGeometry();
+    const trail = new THREE.Line(trailGeometry, trailMaterial);
+    scene.add(trail);
+    trailRef.current = trail;
+
+    // Predicted path (yellow dashed)
+    const predictedMaterial = new THREE.LineDashedMaterial({
+      color: 0xffff00,
+      linewidth: 3,
+      dashSize: 1,
+      gapSize: 0.6,
+      transparent: true,
+      opacity: 0.75
+    });
+    const predictedGeometry = new THREE.BufferGeometry();
+    const predictedPath = new THREE.Line(predictedGeometry, predictedMaterial);
+    scene.add(predictedPath);
+    predictedPathRef.current = predictedPath;
+
+    // Camera controls
+    let isDragging = false;
+    let previousMousePosition = { x: 0, y: 0 };
+    let cameraRotation = { theta: -Math.PI / 5, phi: Math.PI / 5.5 };
+    let cameraDistance = 55;
+    let cameraTarget = new THREE.Vector3(25, 8, 0);
+
+    const updateCamera = () => {
+      const x = cameraDistance * Math.sin(cameraRotation.phi) * Math.cos(cameraRotation.theta);
+      const y = cameraDistance * Math.cos(cameraRotation.phi);
+      const z = cameraDistance * Math.sin(cameraRotation.phi) * Math.sin(cameraRotation.theta);
+      
+      camera.position.set(
+        cameraTarget.x + x,
+        Math.max(y, 4),
+        cameraTarget.z + z
+      );
+      camera.lookAt(cameraTarget);
+    };
+
+    const onMouseDown = (e) => {
+      isDragging = true;
+      previousMousePosition = { x: e.clientX, y: e.clientY };
+    };
+
+    const onMouseMove = (e) => {
+      if (!isDragging) return;
+      const deltaX = e.clientX - previousMousePosition.x;
+      const deltaY = e.clientY - previousMousePosition.y;
+      cameraRotation.theta -= deltaX * 0.005;
+      cameraRotation.phi += deltaY * 0.005;
+      cameraRotation.phi = Math.max(0.1, Math.min(Math.PI / 2 - 0.1, cameraRotation.phi));
+      previousMousePosition = { x: e.clientX, y: e.clientY };
+      updateCamera();
+    };
+
+    const onMouseUp = () => { isDragging = false; };
+    
+    const onWheel = (e) => {
+      e.preventDefault();
+      cameraDistance += e.deltaY * 0.06;
+      cameraDistance = Math.max(30, Math.min(100, cameraDistance));
+      updateCamera();
+    };
+
+    canvasRef.current.addEventListener('mousedown', onMouseDown);
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+    canvasRef.current.addEventListener('wheel', onWheel, { passive: false });
+
+    let lastTime = Date.now();
+    let trailPoints = [];
+
+    const animate = () => {
+      animationRef.current = requestAnimationFrame(animate);
+      const currentTime = Date.now();
+      const deltaTime = Math.min((currentTime - lastTime) / 1000, 0.05);
+      lastTime = currentTime;
+
+      // Camera tracking
+      if (simulationState.current.isFlying) {
+        const targetX = Math.max(20, Math.min(70, simulationState.current.position.x * 0.6 + 15));
+        const targetY = Math.max(7, simulationState.current.maxHeight * 0.45);
+        
+        cameraTarget.x += (targetX - cameraTarget.x) * deltaTime * 1.8;
+        cameraTarget.y += (targetY - cameraTarget.y) * deltaTime * 1.8;
+        updateCamera();
+
+        // Ball shadow
+        ballShadow.position.x = simulationState.current.position.x;
+        ballShadow.position.z = simulationState.current.position.z;
+        const shadowOpacity = Math.min(0.55, simulationState.current.position.y / 30);
+        ballShadow.material.opacity = shadowOpacity;
+        ballShadow.scale.setScalar(1 + simulationState.current.position.y * 0.09);
+      }
+
+      // Physics
+      if (simulationState.current.isFlying) {
+        simulationState.current.time += deltaTime;
+        simulationState.current.totalTime += deltaTime;
+        const t = simulationState.current.time;
+
+        const newX = simulationState.current.velocity.x * t;
+        const newY = 1.2 + simulationState.current.velocity.y * t - 0.5 * gravity * t * t;
+
+        if (newY <= 0.125) {
+          simulationState.current.isFlying = false;
+          simulationState.current.position = { x: newX, y: 0.125, z: 0 };
+          setCanLaunch(true);
+          ballShadow.material.opacity = 0;
+          
+          setStats(prev => ({
+            ...prev,
+            range: newX,
+            currentHeight: 0
+          }));
+        } else {
+          simulationState.current.position = { x: newX, y: newY, z: 0 };
+          simulationState.current.maxHeight = Math.max(simulationState.current.maxHeight, newY);
+
+          const currentVelY = simulationState.current.velocity.y - gravity * t;
+          
+          setStats({
+            velocityX: simulationState.current.velocity.x,
+            velocityY: currentVelY,
+            maxHeight: simulationState.current.maxHeight - 1.2,
+            range: newX,
+            time: simulationState.current.totalTime,
+            currentHeight: newY - 1.2
+          });
+
+          // Trail
+          trailPoints.push(newX, newY, 0);
+          if (trailPoints.length > 1800) {
+            trailPoints = trailPoints.slice(-1800);
+          }
+          trailRef.current.geometry.setAttribute(
+            'position',
+            new THREE.Float32BufferAttribute(trailPoints, 3)
+          );
+        }
+
+        ball.position.set(
+          simulationState.current.position.x,
+          simulationState.current.position.y,
+          simulationState.current.position.z
+        );
+
+        // Ball spin
+        const rotSpeed = Math.sqrt(
+          simulationState.current.velocity.x ** 2 + 
+          (simulationState.current.velocity.y - gravity * t) ** 2
+        );
+        ball.rotation.x += deltaTime * rotSpeed * 2.5;
+        ball.rotation.z += deltaTime * rotSpeed * 1.8;
+      }
+
+      renderer.render(scene, camera);
+    };
+
+    animate();
+
+    const handleResize = () => {
+      if (!canvasRef.current) return;
+      camera.aspect = canvasRef.current.clientWidth / canvasRef.current.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(canvasRef.current.clientWidth, canvasRef.current.clientHeight);
+    };
+
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      if (animationRef.current) cancelAnimationFrame(animationRef.current);
+      window.removeEventListener('resize', handleResize);
+      canvasRef.current?.removeEventListener('mousedown', onMouseDown);
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+      canvasRef.current?.removeEventListener('wheel', onWheel);
+      renderer.dispose();
+    };
+  }, [gravity]);
+
+  // Update predicted path
+  useEffect(() => {
+    if (!predictedPathRef.current) return;
+    
+    const rad = (angle * Math.PI) / 180;
+    const vx = speed * Math.cos(rad);
+    const vy = speed * Math.sin(rad);
+    
+    const points = [];
+    const totalTime = (2 * vy) / gravity;
+    const steps = 120;
+    
+    for (let i = 0; i <= steps; i++) {
+      const t = (totalTime * i) / steps;
+      const x = vx * t;
+      const y = 1.2 + vy * t - 0.5 * gravity * t * t;
+      
+      if (y >= 0.125) {
+        points.push(new THREE.Vector3(x, y, 0));
+      }
+    }
+    
+    predictedPathRef.current.geometry.setFromPoints(points);
+    predictedPathRef.current.computeLineDistances();
+  }, [angle, speed, gravity]);
 
   const handleLaunch = () => {
-    if (canLaunch) {
-      setIsLaunched(true);
-      setCanLaunch(false);
-      setTimeout(() => setIsLaunched(false), 100);
+    if (!canLaunch) return;
+
+    // Bat swing animation
+    if (batRef.current) {
+      const initialRotZ = batRef.current.rotation.z;
+      const initialRotX = batRef.current.rotation.x;
+      let swingProgress = 0;
+      
+      const swingInterval = setInterval(() => {
+        swingProgress += 0.075;
+        const swingAmount = Math.sin(swingProgress * Math.PI);
+        batRef.current.rotation.z = initialRotZ - swingAmount * (Math.PI / 2.3);
+        batRef.current.rotation.x = initialRotX + swingAmount * (Math.PI / 9);
+        batRef.current.position.x = -0.55 + swingAmount * 0.85;
+        batRef.current.position.y = 0.45 + swingAmount * 0.25;
+        
+        if (swingProgress >= 1) {
+          clearInterval(swingInterval);
+          setTimeout(() => {
+            batRef.current.rotation.z = initialRotZ;
+            batRef.current.rotation.x = initialRotX;
+            batRef.current.position.set(-0.55, 0.45, -0.45);
+          }, 250);
+        }
+      }, 16);
     }
+
+    setTimeout(() => {
+      const rad = (angle * Math.PI) / 180;
+      simulationState.current = {
+        isFlying: true,
+        time: 0,
+        totalTime: 0,
+        position: { x: 0, y: 1.2, z: 0 },
+        velocity: {
+          x: speed * Math.cos(rad),
+          y: speed * Math.sin(rad)
+        },
+        maxHeight: 1.2
+      };
+      
+      if (trailRef.current?.geometry) {
+        trailRef.current.geometry.setAttribute(
+          'position',
+          new THREE.Float32BufferAttribute([], 3)
+        );
+      }
+      
+      setCanLaunch(false);
+    }, 130);
   };
 
   const handleReset = () => {
-    setStats({
-      velocityX: 0,
-      velocityY: 0,
-      maxHeight: 0,
-      distance: 0,
-      time: 0
-    });
+    simulationState.current = {
+      isFlying: false,
+      time: 0,
+      totalTime: 0,
+      position: { x: 0, y: 1.2, z: 0 },
+      velocity: { x: 0, y: 0 },
+      maxHeight: 1.2
+    };
+    
+    if (ballRef.current) {
+      ballRef.current.position.set(0, 1.2, 0);
+    }
+    
+    if (trailRef.current?.geometry) {
+      trailRef.current.geometry.setAttribute(
+        'position',
+        new THREE.Float32BufferAttribute([], 3)
+      );
+    }
+    
+    setStats({ velocityX: 0, velocityY: 0, maxHeight: 0, range: 0, time: 0, currentHeight: 0 });
     setCanLaunch(true);
   };
 
+  const handleExportCSV = () => {
+    const timestamp = new Date().toLocaleString();
+    const csvContent = [
+      ['Cricket Projectile Motion Simulation Data'],
+      ['Generated:', timestamp],
+      [''],
+      ['Parameter', 'Value', 'Unit'],
+      ['Launch Angle', angle, '°'],
+      ['Initial Velocity', speed, 'm/s'],
+      ['Gravity', gravity, 'm/s²'],
+      [''],
+      ['Results', '', ''],
+      ['Velocity X', stats.velocityX.toFixed(2), 'm/s'],
+      ['Velocity Y', stats.velocityY.toFixed(2), 'm/s'],
+      ['Max Height', stats.maxHeight.toFixed(2), 'm'],
+      ['Range (Distance)', stats.range.toFixed(2), 'm'],
+      ['Flight Time', stats.time.toFixed(2), 's'],
+      ['Current Height', stats.currentHeight.toFixed(2), 'm']
+    ].map(row => row.join(',')).join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `cricket_simulation_${Date.now()}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
-    <div className="relative w-full h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 overflow-hidden">
-      {/* Custom Styles */}
-      <style jsx>{`
-        .slider-thumb::-webkit-slider-thumb {
-          appearance: none;
-          width: 16px;
-          height: 16px;
-          border-radius: 50%;
-          background: linear-gradient(135deg, #3b82f6, #8b5cf6);
-          cursor: pointer;
-          box-shadow: 0 0 15px rgba(59, 130, 246, 0.6);
-          transition: transform 0.2s;
-        }
-        .slider-thumb::-webkit-slider-thumb:hover {
-          transform: scale(1.15);
-          box-shadow: 0 0 20px rgba(59, 130, 246, 0.9);
-        }
-        .slider-thumb::-moz-range-thumb {
-          width: 16px;
-          height: 16px;
-          border-radius: 50%;
-          background: linear-gradient(135deg, #3b82f6, #8b5cf6);
-          cursor: pointer;
-          border: none;
-          box-shadow: 0 0 15px rgba(59, 130, 246, 0.6);
-          transition: transform 0.2s;
-        }
-        .slider-thumb::-moz-range-thumb:hover {
-          transform: scale(1.15);
-          box-shadow: 0 0 20px rgba(59, 130, 246, 0.9);
-        }
-      `}</style>
+    <div className="relative w-full h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 overflow-hidden">
+      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
 
-      {/* 3D Canvas */}
-      <div className="absolute inset-0" style={{ background: '#87CEEB' }}>
-        <Suspense fallback={<CanvasLoader />}>
-          <Canvas
-            camera={{ position: [-5, 10, 20], fov: 60 }}
-            shadows
-            gl={{ antialias: true, alpha: false }}
-            dpr={[1, 2]}
-            onCreated={(state) => {
-              state.gl.setClearColor('#87CEEB');
-            }}
-          >
-            <Suspense fallback={null}>
-              <Scene
-                angle={angle}
-                velocity={velocity}
-                gravity={gravity}
-                bounce={bounce}
-                onStatsUpdate={setStats}
-                isLaunched={isLaunched}
-                onLaunchComplete={() => setCanLaunch(true)}
-              />
-              <OrbitControls
-                enablePan={true}
-                enableZoom={true}
-                enableRotate={true}
-                minDistance={8}
-                maxDistance={60}
-                target={[8, 3, 0]}
-                enableDamping
-                dampingFactor={0.05}
-              />
-            </Suspense>
-          </Canvas>
-        </Suspense>
-      </div>
-
-      {/* UI Overlay */}
-      <div className="relative z-10 pointer-events-none h-full flex flex-col">
+      <div className="relative z-10 pointer-events-none h-full flex flex-col p-4">
         {/* Header */}
-        <div className="p-6 flex justify-between items-start">
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="pointer-events-auto"
-          >
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent">
-              PROJECTILE SIM
+        <div className="flex justify-between items-start mb-3">
+          <div>
+            <h1 className="text-2xl font-bold text-white drop-shadow-[0_3px_10px_rgba(0,0,0,0.8)]">
+              🏏 CRICKET PROJECTILE MOTION SIMULATOR
             </h1>
-            <p className="text-xs text-slate-400 mt-1">Physics Trajectory Analyzer</p>
-          </motion.div>
-
+            <p className="text-sm text-green-300 drop-shadow-lg mt-1">
+              Professional Cricket Stadium • Real-time Physics Visualization
+            </p>
+          </div>
           <div className="flex gap-2 pointer-events-auto">
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={handleReset}
-              className="p-3 bg-slate-800/50 backdrop-blur-md border border-white/10 rounded-xl hover:bg-slate-700/50 transition-colors"
+              onClick={handleExportCSV}
+              className="p-2.5 bg-slate-800/80 backdrop-blur-md border border-green-500/40 rounded-lg hover:bg-slate-700/80 transition-colors shadow-xl"
+              title="Export to CSV"
             >
-              <RotateCcw size={20} className="text-slate-300" />
+              <Download size={18} className="text-green-400" />
             </motion.button>
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="p-3 bg-slate-800/50 backdrop-blur-md border border-white/10 rounded-xl hover:bg-slate-700/50 transition-colors"
+              onClick={() => setShowInfo(!showInfo)}
+              className="p-2.5 bg-slate-800/80 backdrop-blur-md border border-green-500/40 rounded-lg hover:bg-slate-700/80 transition-colors shadow-xl"
             >
-              <Settings2 size={20} className="text-slate-300" />
+              <Info size={18} className="text-green-400" />
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleReset}
+              className="p-2.5 bg-slate-800/80 backdrop-blur-md border border-green-500/40 rounded-lg hover:bg-slate-700/80 transition-colors shadow-xl"
+            >
+              <RotateCcw size={18} className="text-green-400" />
             </motion.button>
           </div>
         </div>
 
-        {/* Stats HUD - Top Left */}
-        <div className="px-6 grid grid-cols-4 gap-2 max-w-2xl">
-          <StatCard label="Velocity X" value={stats.velocityX.toFixed(1)} unit="m/s" />
-          <StatCard label="Velocity Y" value={stats.velocityY.toFixed(1)} unit="m/s" />
-          <StatCard label="Max Height" value={stats.maxHeight.toFixed(1)} unit="m" />
-          <StatCard label="Distance" value={stats.distance.toFixed(1)} unit="m" />
+        {/* Info Panel */}
+        <AnimatePresence>
+          {showInfo && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="bg-slate-900/95 backdrop-blur-xl border border-green-500/50 rounded-xl p-4 max-w-3xl mb-3 shadow-2xl pointer-events-auto"
+            >
+              <h3 className="text-green-400 font-bold mb-3 text-lg">📚 Physics Concepts in Cricket</h3>
+              <div className="grid grid-cols-2 gap-4 text-sm text-slate-300">
+                <div>
+                  <strong className="text-green-300">Parabolic Motion:</strong> The ball follows a curved path under gravity's influence
+                </div>
+                <div>
+                  <strong className="text-green-300">Launch Angle:</strong> 45° gives maximum distance (ideal for boundaries!)
+                </div>
+                <div>
+                  <strong className="text-green-300">Velocity Components:</strong> Horizontal (constant) vs Vertical (decreases due to gravity)
+                </div>
+                <div>
+                  <strong className="text-green-300">Time of Flight:</strong> Higher angles mean longer flight time but shorter distance
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Real-time Stats */}
+        <div className="grid grid-cols-5 gap-2.5 max-w-4xl mb-3">
+          <Stat 
+            label="Horizontal Speed" 
+            value={stats.velocityX.toFixed(1)} 
+            unit="m/s"
+            description="Constant horizontal speed throughout flight (no air resistance in this model)"
+          />
+          <Stat 
+            label="Vertical Speed" 
+            value={stats.velocityY.toFixed(1)} 
+            unit="m/s"
+            description="Vertical speed decreases due to gravity pulling the ball down"
+          />
+          <Stat 
+            label="Current Height" 
+            value={stats.currentHeight.toFixed(1)} 
+            unit="m"
+            description="Ball's current height above ground level"
+          />
+          <Stat 
+            label="Max Height" 
+            value={stats.maxHeight.toFixed(1)} 
+            unit="m"
+            description="Peak height reached - apex of the parabola"
+          />
+          <Stat 
+            label="Range" 
+            value={stats.range.toFixed(1)} 
+            unit="m"
+            description="Total horizontal distance traveled (boundary is at 75m!)"
+          />
         </div>
 
         <div className="flex-1" />
 
-        {/* Control Deck - Bottom Center */}
-        <div className="p-4 flex justify-center">
-          <GlassPanel className="w-full max-w-xl space-y-3">
-            <div className="grid grid-cols-2 gap-4">
-              <Slider
-                label="Launch Angle"
-                value={angle}
-                onChange={setAngle}
-                min={0}
-                max={90}
-                step={1}
+        {/* Control Panel - Positioned at bottom-left */}
+        <div className="flex justify-start items-end pointer-events-auto">
+          <div className="bg-gradient-to-br from-slate-900/95 to-slate-800/95 backdrop-blur-xl border-2 border-green-500/50 rounded-xl p-3 w-full max-w-xs space-y-2.5 shadow-2xl">
+            <div className="space-y-2">
+              <Slider 
+                label="Launch Angle (θ)" 
+                value={angle} 
+                onChange={setAngle} 
+                min={0} 
+                max={90} 
+                step={1} 
                 unit="°"
+                description=""
               />
-              <Slider
-                label="Initial Velocity"
-                value={velocity}
-                onChange={setVelocity}
-                min={5}
-                max={50}
-                step={0.5}
+              <Slider 
+                label="Shot Speed (v₀)" 
+                value={speed} 
+                onChange={setSpeed} 
+                min={5} 
+                max={50} 
+                step={0.5} 
                 unit="m/s"
+                description=""
               />
-              <Slider
-                label="Gravity"
-                value={gravity}
-                onChange={setGravity}
-                min={1}
-                max={20}
-                step={0.1}
+              <Slider 
+                label="Gravity (g)" 
+                value={gravity} 
+                onChange={setGravity} 
+                min={1} 
+                max={20} 
+                step={0.1} 
                 unit="m/s²"
-              />
-              <Slider
-                label="Bounce Factor"
-                value={bounce}
-                onChange={setBounce}
-                min={0}
-                max={0.95}
-                step={0.05}
-                unit=""
+                description=""
               />
             </div>
 
-            <motion.button
-              whileHover={{ scale: canLaunch ? 1.02 : 1 }}
-              whileTap={{ scale: canLaunch ? 0.98 : 1 }}
-              onClick={handleLaunch}
-              disabled={!canLaunch}
-              className={`w-full py-2.5 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-all ${
-                canLaunch
-                  ? 'bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-400 hover:to-purple-500 shadow-[0_0_30px_rgba(59,130,246,0.5)] text-white'
-                  : 'bg-slate-700/50 text-slate-500 cursor-not-allowed'
-              }`}
-            >
-              <Play size={18} fill="currentColor" />
-              {canLaunch ? 'LAUNCH' : 'IN FLIGHT...'}
-            </motion.button>
+            <div className="border-t border-slate-700/50 pt-2 space-y-2">
+              <motion.button
+                whileHover={{ scale: canLaunch ? 1.02 : 1 }}
+                whileTap={{ scale: canLaunch ? 0.98 : 1 }}
+                onClick={handleLaunch}
+                disabled={!canLaunch}
+                className={`w-full py-2 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-xl ${
+                  canLaunch
+                    ? 'bg-gradient-to-r from-green-600 via-emerald-500 to-green-600 hover:from-green-500 hover:to-emerald-400 text-white shadow-green-500/50'
+                    : 'bg-slate-700/60 text-slate-500 cursor-not-allowed'
+                }`}
+              >
+                <Play size={16} fill="currentColor" />
+                {canLaunch ? '🏏 HIT SHOT!' : '🏏 IN FLIGHT...'}
+              </motion.button>
 
-            <div className="text-center text-[10px] text-slate-400">
-              Time: <span className="font-mono text-blue-400">{stats.time.toFixed(2)}s</span>
+              <div className="flex flex-col gap-1 text-[10px]">
+                <div className="flex gap-2 text-green-300">
+                  <span>⏱️ <span className="font-mono font-bold text-white">{stats.time.toFixed(2)}s</span></span>
+                  <span>🔴 Actual</span>
+                  <span>🟡 Predicted</span>
+                </div>
+              </div>
             </div>
-          </GlassPanel>
+          </div>
         </div>
       </div>
     </div>
