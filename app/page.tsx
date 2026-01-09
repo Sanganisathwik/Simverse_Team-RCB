@@ -5,7 +5,14 @@ import * as THREE from 'three';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Play, RotateCcw, Info, Maximize2, Download } from 'lucide-react';
 
-const Stat = ({ label, value, unit, description }) => (
+interface StatProps {
+  label: string;
+  value: string;
+  unit: string;
+  description?: string;
+}
+
+const Stat: React.FC<StatProps> = ({ label, value, unit, description }) => (
   <div className="bg-slate-900/80 backdrop-blur-md border border-green-500/40 rounded-lg px-3 py-2.5 shadow-xl group relative">
     <div className="text-[10px] text-green-400 mb-1 font-semibold uppercase tracking-wide">{label}</div>
     <div className="font-mono text-xl font-bold text-white">
@@ -19,7 +26,18 @@ const Stat = ({ label, value, unit, description }) => (
   </div>
 );
 
-const Slider = ({ label, value, onChange, min, max, step, unit, description }) => {
+interface SliderProps {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+  min: number;
+  max: number;
+  step: number;
+  unit: string;
+  description?: string;
+}
+
+const Slider: React.FC<SliderProps> = ({ label, value, onChange, min, max, step, unit, description }) => {
   const percentage = ((value - min) / (max - min)) * 100;
 
   return (
@@ -60,16 +78,16 @@ const Slider = ({ label, value, onChange, min, max, step, unit, description }) =
 };
 
 export default function CricketProjectileSimulator() {
-  const canvasRef = useRef(null);
-  const sceneRef = useRef(null);
-  const rendererRef = useRef(null);
-  const cameraRef = useRef(null);
-  const ballRef = useRef(null);
-  const batsmanRef = useRef(null);
-  const batRef = useRef(null);
-  const trailRef = useRef(null);
-  const predictedPathRef = useRef(null);
-  const animationRef = useRef(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const sceneRef = useRef<THREE.Scene | null>(null);
+  const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
+  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
+  const ballRef = useRef<THREE.Mesh | null>(null);
+  const batsmanRef = useRef<THREE.Group | null>(null);
+  const batRef = useRef<THREE.Group | null>(null);
+  const trailRef = useRef<THREE.Line | null>(null);
+  const predictedPathRef = useRef<THREE.Line | null>(null);
+  const animationRef = useRef<number | null>(null);
 
   const [angle, setAngle] = useState(45);
   const [speed, setSpeed] = useState(28);
@@ -226,7 +244,7 @@ export default function CricketProjectileSimulator() {
     scene.add(boundary);
 
     // Stadium stands (4 sections)
-    const createStand = (startAngle, endAngle, radius, color) => {
+    const createStand = (startAngle: number, endAngle: number, radius: number, color: number) => {
       const standGeometry = new THREE.CylinderGeometry(radius + 15, radius + 10, 20, 32, 1, true, startAngle, endAngle - startAngle);
       const standMaterial = new THREE.MeshStandardMaterial({
         color: color,
@@ -279,7 +297,7 @@ export default function CricketProjectileSimulator() {
 
     // Scoreboard screen
     const screenGeometry = new THREE.PlaneGeometry(18, 10);
-    const screenMaterial = new THREE.MeshBasicMaterial({
+    const screenMaterial = new THREE.MeshStandardMaterial({
       color: 0x00ff00,
       emissive: 0x00ff00,
       emissiveIntensity: 0.5
@@ -390,7 +408,7 @@ export default function CricketProjectileSimulator() {
 
       // Number marker on pole
       const numberGeometry = new THREE.SphereGeometry(0.2, 16, 16);
-      const numberMaterial = new THREE.MeshBasicMaterial({
+      const numberMaterial = new THREE.MeshStandardMaterial({
         color: 0xff6b6b,
         emissive: 0xff6b6b,
         emissiveIntensity: 0.5
@@ -697,12 +715,12 @@ export default function CricketProjectileSimulator() {
       camera.lookAt(cameraTarget);
     };
 
-    const onMouseDown = (e) => {
+    const onMouseDown = (e: MouseEvent) => {
       isDragging = true;
       previousMousePosition = { x: e.clientX, y: e.clientY };
     };
 
-    const onMouseMove = (e) => {
+    const onMouseMove = (e: MouseEvent) => {
       if (!isDragging) return;
       const deltaX = e.clientX - previousMousePosition.x;
       const deltaY = e.clientY - previousMousePosition.y;
@@ -715,7 +733,7 @@ export default function CricketProjectileSimulator() {
 
     const onMouseUp = () => { isDragging = false; };
 
-    const onWheel = (e) => {
+    const onWheel = (e: WheelEvent) => {
       e.preventDefault();
       cameraDistance += e.deltaY * 0.06;
       cameraDistance = Math.max(30, Math.min(100, cameraDistance));
@@ -728,7 +746,7 @@ export default function CricketProjectileSimulator() {
     canvasRef.current.addEventListener('wheel', onWheel, { passive: false });
 
     let lastTime = Date.now();
-    let trailPoints = [];
+    let trailPoints: number[] = [];
 
     const animate = () => {
       animationRef.current = requestAnimationFrame(animate);
@@ -793,10 +811,12 @@ export default function CricketProjectileSimulator() {
           if (trailPoints.length > 1800) {
             trailPoints = trailPoints.slice(-1800);
           }
-          trailRef.current.geometry.setAttribute(
-            'position',
-            new THREE.Float32BufferAttribute(trailPoints, 3)
-          );
+          if (trailRef.current) {
+            trailRef.current.geometry.setAttribute(
+              'position',
+              new THREE.Float32BufferAttribute(trailPoints, 3)
+            );
+          }
         }
 
         ball.position.set(
@@ -875,6 +895,7 @@ export default function CricketProjectileSimulator() {
       let swingProgress = 0;
 
       const swingInterval = setInterval(() => {
+        if (!batRef.current) return;
         swingProgress += 0.075;
         const swingAmount = Math.sin(swingProgress * Math.PI);
         batRef.current.rotation.z = initialRotZ - swingAmount * (Math.PI / 2.3);
@@ -885,6 +906,7 @@ export default function CricketProjectileSimulator() {
         if (swingProgress >= 1) {
           clearInterval(swingInterval);
           setTimeout(() => {
+            if (!batRef.current) return;
             batRef.current.rotation.z = initialRotZ;
             batRef.current.rotation.x = initialRotX;
             batRef.current.position.set(-0.55, 0.45, -0.45);
