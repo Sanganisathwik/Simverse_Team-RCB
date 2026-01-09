@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import * as THREE from 'three';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, RotateCcw, Info, Maximize2 } from 'lucide-react';
+import { Play, RotateCcw, Info, Maximize2, Download } from 'lucide-react';
 
 const Stat = ({ label, value, unit, description }) => (
   <div className="bg-slate-900/80 backdrop-blur-md border border-green-500/40 rounded-lg px-3 py-2.5 shadow-xl group relative">
@@ -943,6 +943,38 @@ export default function CricketProjectileSimulator() {
     setCanLaunch(true);
   };
 
+  const handleExportCSV = () => {
+    const timestamp = new Date().toLocaleString();
+    const csvContent = [
+      ['Cricket Projectile Motion Simulation Data'],
+      ['Generated:', timestamp],
+      [''],
+      ['Parameter', 'Value', 'Unit'],
+      ['Launch Angle', angle, '°'],
+      ['Initial Velocity', speed, 'm/s'],
+      ['Gravity', gravity, 'm/s²'],
+      [''],
+      ['Results', '', ''],
+      ['Velocity X', stats.velocityX.toFixed(2), 'm/s'],
+      ['Velocity Y', stats.velocityY.toFixed(2), 'm/s'],
+      ['Max Height', stats.maxHeight.toFixed(2), 'm'],
+      ['Range (Distance)', stats.range.toFixed(2), 'm'],
+      ['Flight Time', stats.time.toFixed(2), 's'],
+      ['Current Height', stats.currentHeight.toFixed(2), 'm']
+    ].map(row => row.join(',')).join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `cricket_simulation_${Date.now()}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="relative w-full h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 overflow-hidden">
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
@@ -974,6 +1006,15 @@ export default function CricketProjectileSimulator() {
               className="p-2.5 bg-slate-800/80 backdrop-blur-md border border-green-500/40 rounded-lg hover:bg-slate-700/80 transition-colors shadow-xl"
             >
               <RotateCcw size={18} className="text-green-400" />
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleExportCSV}
+              title="Export to CSV"
+              className="p-2.5 bg-slate-800/80 backdrop-blur-md border border-green-500/40 rounded-lg hover:bg-slate-700/80 transition-colors shadow-xl"
+            >
+              <Download size={18} className="text-green-400" />
             </motion.button>
           </div>
         </div>
