@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Play, RotateCcw, Settings2 } from 'lucide-react';
 
 // Glass Panel Component
-const GlassPanel = ({ children, className = '' }) => (
+const GlassPanel = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
@@ -20,7 +20,15 @@ const GlassPanel = ({ children, className = '' }) => (
 );
 
 // Custom Slider Component
-const Slider = ({ label, value, onChange, min, max, step, unit }) => (
+const Slider = ({ label, value, onChange, min, max, step, unit }: {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+  min: number;
+  max: number;
+  step: number;
+  unit: string;
+}) => (
   <div className="space-y-1">
     <div className="flex justify-between items-center">
       <label className="text-xs text-slate-300">{label}</label>
@@ -49,7 +57,7 @@ const Slider = ({ label, value, onChange, min, max, step, unit }) => (
 );
 
 // Compact Stat Card Component
-const StatCard = ({ label, value, unit }) => (
+const StatCard = ({ label, value, unit }: { label: string; value: string | number; unit: string }) => (
   <motion.div
     initial={{ opacity: 0, x: -20 }}
     animate={{ opacity: 1, x: 0 }}
@@ -63,10 +71,15 @@ const StatCard = ({ label, value, unit }) => (
 );
 
 // Projectile Component with Enhanced Visual Effects
-const Projectile = ({ position, isFlying, trail, velocity }) => {
-  const meshRef = useRef();
-  const arrowRef = useRef();
-  const glowRef = useRef();
+const Projectile = ({ position, isFlying, trail, velocity }: {
+  position: { x: number; y: number; z: number };
+  isFlying: boolean;
+  trail: any[];
+  velocity: { x: number; y: number } | null;
+}) => {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const arrowRef = useRef<THREE.ArrowHelper>(null);
+  const glowRef = useRef<THREE.Mesh>(null);
 
   useFrame(() => {
     if (meshRef.current && position) {
@@ -90,7 +103,7 @@ const Projectile = ({ position, isFlying, trail, velocity }) => {
     }
   });
 
-  const speed = Math.sqrt(velocity.x ** 2 + velocity.y ** 2);
+  const speed = velocity ? Math.sqrt(velocity.x ** 2 + velocity.y ** 2) : 0;
   const speedIntensity = Math.min(speed / 30, 1);
 
   return (
@@ -149,7 +162,7 @@ const Projectile = ({ position, isFlying, trail, velocity }) => {
       )}
 
       {/* Speed Lines */}
-      {isFlying && speed > 15 && (
+      {isFlying && speed > 15 && velocity && (
         <>
           {[...Array(5)].map((_, i) => {
             const offset = (i - 2) * 0.15;
@@ -208,7 +221,12 @@ const Projectile = ({ position, isFlying, trail, velocity }) => {
 };
 
 // Enhanced Predictive Trajectory Path with Markers
-const PredictiveTrajectory = ({ angle, velocity, gravity, show }) => {
+const PredictiveTrajectory = ({ angle, velocity, gravity, show }: {
+  angle: number;
+  velocity: number;
+  gravity: number;
+  show: boolean;
+}) => {
   if (!show) return null;
 
   const points = [];
@@ -282,6 +300,7 @@ const PredictiveTrajectory = ({ angle, velocity, gravity, show }) => {
               count={2}
               array={new Float32Array([0, 0, 0, 0, -apexY + 0.3, 0])}
               itemSize={3}
+              args={[null, 3, 2] as any}
             />
           </bufferGeometry>
           <lineDashedMaterial color="#fbbf24" transparent opacity={0.4} dashSize={0.3} gapSize={0.2} />
@@ -336,9 +355,9 @@ const PredictiveTrajectory = ({ angle, velocity, gravity, show }) => {
 };
 
 // Batsman Component
-const Batsman = ({ isSwinging }) => {
-  const batsmanRef = useRef();
-  const batRef = useRef();
+const Batsman = ({ isSwinging }: { isSwinging: boolean }) => {
+  const batsmanRef = useRef<THREE.Group>(null);
+  const batRef = useRef<THREE.Group>(null);
   const swingProgressRef = useRef(0);
 
   useFrame((state, delta) => {
@@ -507,7 +526,15 @@ const GroundGrid = () => (
 );
 
 // Main Scene Component
-const Scene = ({ angle, velocity, gravity, bounce, onStatsUpdate, isLaunched, onLaunchComplete }) => {
+const Scene = ({ angle, velocity, gravity, bounce, onStatsUpdate, isLaunched, onLaunchComplete }: {
+  angle: number;
+  velocity: number;
+  gravity: number;
+  bounce: number;
+  onStatsUpdate: (stats: any) => void;
+  isLaunched: boolean;
+  onLaunchComplete: () => void;
+}) => {
   const [position, setPosition] = useState({ x: 0, y: 1, z: 0 });
   const [isFlying, setIsFlying] = useState(false);
   const timeRef = useRef(0);
@@ -515,8 +542,8 @@ const Scene = ({ angle, velocity, gravity, bounce, onStatsUpdate, isLaunched, on
   const startPositionRef = useRef({ x: 0, y: 0.3 }); // Track starting position for each arc
   const maxHeightRef = useRef(0); // Track maximum height achieved
   const totalTimeRef = useRef(0); // Track total elapsed time
-  const [trail, setTrail] = useState([]);
-  const [currentVelocity, setCurrentVelocity] = useState({ x: 0, y: 0 });
+  const [trail, setTrail] = useState<any[]>([]);
+  const [currentVelocity, setCurrentVelocity] = useState<{ x: number; y: number } | null>({ x: 0, y: 0 });
 
   useEffect(() => {
     if (isLaunched) {
