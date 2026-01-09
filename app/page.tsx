@@ -1,11 +1,9 @@
 "use client";
 
-import React, { useState, useRef, useEffect, Suspense } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, Grid, Trail } from '@react-three/drei';
+import React, { useState, useRef, useEffect } from 'react';
 import * as THREE from 'three';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, RotateCcw, Settings2, Info, Maximize2, Download } from 'lucide-react';
+import { Play, RotateCcw, Info, Maximize2 } from 'lucide-react';
 
 const Stat = ({ label, value, unit, description }) => (
   <div className="bg-slate-900/80 backdrop-blur-md border border-green-500/40 rounded-lg px-3 py-2.5 shadow-xl group relative">
@@ -23,7 +21,7 @@ const Stat = ({ label, value, unit, description }) => (
 
 const Slider = ({ label, value, onChange, min, max, step, unit, description }) => {
   const percentage = ((value - min) / (max - min)) * 100;
-  
+
   return (
     <div className="space-y-2">
       <div className="flex justify-between items-center">
@@ -72,7 +70,7 @@ export default function CricketProjectileSimulator() {
   const trailRef = useRef(null);
   const predictedPathRef = useRef(null);
   const animationRef = useRef(null);
-  
+
   const [angle, setAngle] = useState(45);
   const [speed, setSpeed] = useState(28);
   const [gravity, setGravity] = useState(9.8);
@@ -105,16 +103,16 @@ export default function CricketProjectileSimulator() {
     sceneRef.current = scene;
 
     const camera = new THREE.PerspectiveCamera(
-      70,
+      65,
       canvasRef.current.clientWidth / canvasRef.current.clientHeight,
       0.1,
-      400
+      300
     );
-    camera.position.set(-40, 35, 60);
-    camera.lookAt(20, 8, 0);
+    camera.position.set(-30, 20, 40);
+    camera.lookAt(25, 5, 0);
     cameraRef.current = camera;
 
-    const renderer = new THREE.WebGLRenderer({ 
+    const renderer = new THREE.WebGLRenderer({
       canvas: canvasRef.current,
       antialias: true
     });
@@ -304,7 +302,7 @@ export default function CricketProjectileSimulator() {
 
     // Pitch markings (white lines)
     const linesMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
-    
+
     // Popping crease at batting end
     const creaseGeometry = new THREE.BoxGeometry(3.66, 0.01, 0.1);
     const crease1 = new THREE.Mesh(creaseGeometry, linesMaterial);
@@ -322,7 +320,7 @@ export default function CricketProjectileSimulator() {
       const returnCrease1 = new THREE.Mesh(returnCreaseGeometry, linesMaterial);
       returnCrease1.position.set(x, 0.09, -1.22);
       scene.add(returnCrease1);
-      
+
       const returnCrease2 = new THREE.Mesh(returnCreaseGeometry, linesMaterial);
       returnCrease2.position.set(x, 0.09, 21.34);
       scene.add(returnCrease2);
@@ -345,7 +343,7 @@ export default function CricketProjectileSimulator() {
     // Bails (2 bails)
     const bailGeometry = new THREE.CylinderGeometry(0.012, 0.012, 0.13, 8);
     const bailMaterial = new THREE.MeshStandardMaterial({ color: 0xfaf0e6 });
-    
+
     [-0.06, 0.06].forEach(z => {
       const bail = new THREE.Mesh(bailGeometry, bailMaterial);
       bail.rotation.z = Math.PI / 2;
@@ -364,7 +362,7 @@ export default function CricketProjectileSimulator() {
     // Distance markers with poles
     for (let i = 1; i <= 10; i++) {
       const distance = i * 10;
-      
+
       // Ground circle
       const markerGeometry = new THREE.RingGeometry(0.9, 1, 32);
       const markerMaterial = new THREE.MeshBasicMaterial({
@@ -377,7 +375,7 @@ export default function CricketProjectileSimulator() {
       marker.rotation.x = -Math.PI / 2;
       marker.position.set(distance, 0.05, 0);
       scene.add(marker);
-      
+
       // Distance pole
       const poleGeometry = new THREE.CylinderGeometry(0.1, 0.1, 1, 8);
       const poleMaterial = new THREE.MeshStandardMaterial({
@@ -389,7 +387,7 @@ export default function CricketProjectileSimulator() {
       pole.position.set(distance, 0.5, -4);
       pole.castShadow = true;
       scene.add(pole);
-      
+
       // Number marker on pole
       const numberGeometry = new THREE.SphereGeometry(0.2, 16, 16);
       const numberMaterial = new THREE.MeshBasicMaterial({
@@ -405,7 +403,7 @@ export default function CricketProjectileSimulator() {
     // Height reference grid
     for (let i = 1; i <= 7; i++) {
       const height = i * 5;
-      
+
       // Horizontal line
       const lineGeometry = new THREE.BufferGeometry().setFromPoints([
         new THREE.Vector3(-5, height, 0),
@@ -422,7 +420,7 @@ export default function CricketProjectileSimulator() {
       const line = new THREE.Line(lineGeometry, lineMaterial);
       line.computeLineDistances();
       scene.add(line);
-      
+
       // Height marker
       const markerGeometry = new THREE.SphereGeometry(0.35, 16, 16);
       const markerMaterial = new THREE.MeshBasicMaterial({
@@ -437,7 +435,7 @@ export default function CricketProjectileSimulator() {
 
     // Detailed Batsman
     const batsmanGroup = new THREE.Group();
-    
+
     // Legs with pads
     const legGeometry = new THREE.CylinderGeometry(0.15, 0.14, 1.1, 16);
     const padMaterial = new THREE.MeshStandardMaterial({
@@ -445,12 +443,12 @@ export default function CricketProjectileSimulator() {
       roughness: 0.7,
       metalness: 0.1
     });
-    
+
     const leftLeg = new THREE.Mesh(legGeometry, padMaterial);
     leftLeg.position.set(-0.22, 0.55, 0);
     leftLeg.castShadow = true;
     batsmanGroup.add(leftLeg);
-    
+
     const rightLeg = new THREE.Mesh(legGeometry, padMaterial);
     rightLeg.position.set(0.22, 0.55, 0.15);
     rightLeg.castShadow = true;
@@ -477,13 +475,13 @@ export default function CricketProjectileSimulator() {
 
     // Arms
     const armGeometry = new THREE.CylinderGeometry(0.09, 0.11, 0.75, 12);
-    
+
     const leftArm = new THREE.Mesh(armGeometry, jerseyMaterial);
     leftArm.position.set(-0.5, 1.7, 0);
     leftArm.rotation.z = Math.PI / 5;
     leftArm.castShadow = true;
     batsmanGroup.add(leftArm);
-    
+
     const rightArm = new THREE.Mesh(armGeometry, jerseyMaterial);
     rightArm.position.set(0.5, 1.6, 0);
     rightArm.rotation.z = -Math.PI / 5;
@@ -496,11 +494,11 @@ export default function CricketProjectileSimulator() {
       color: 0x2d5016,
       roughness: 0.8
     });
-    
+
     const leftGlove = new THREE.Mesh(gloveGeometry, gloveMaterial);
     leftGlove.position.set(-0.75, 1.5, 0);
     batsmanGroup.add(leftGlove);
-    
+
     const rightGlove = new THREE.Mesh(gloveGeometry, gloveMaterial);
     rightGlove.position.set(0.75, 1.4, 0);
     batsmanGroup.add(rightGlove);
@@ -548,7 +546,7 @@ export default function CricketProjectileSimulator() {
 
     // Cricket Bat (professional)
     const batGroup = new THREE.Group();
-    
+
     // Blade
     const bladeGeometry = new THREE.BoxGeometry(0.13, 1.05, 0.065);
     const bladeMaterial = new THREE.MeshStandardMaterial({
@@ -590,7 +588,7 @@ export default function CricketProjectileSimulator() {
     const grip = new THREE.Mesh(gripGeometry, gripMaterial);
     grip.position.y = 1.45;
     batGroup.add(grip);
-    
+
     batGroup.position.set(-0.55, 0.45, -0.45);
     batGroup.rotation.z = Math.PI / 4;
     batGroup.rotation.x = -Math.PI / 12;
@@ -690,7 +688,7 @@ export default function CricketProjectileSimulator() {
       const x = cameraDistance * Math.sin(cameraRotation.phi) * Math.cos(cameraRotation.theta);
       const y = cameraDistance * Math.cos(cameraRotation.phi);
       const z = cameraDistance * Math.sin(cameraRotation.phi) * Math.sin(cameraRotation.theta);
-      
+
       camera.position.set(
         cameraTarget.x + x,
         Math.max(y, 4),
@@ -716,7 +714,7 @@ export default function CricketProjectileSimulator() {
     };
 
     const onMouseUp = () => { isDragging = false; };
-    
+
     const onWheel = (e) => {
       e.preventDefault();
       cameraDistance += e.deltaY * 0.06;
@@ -742,7 +740,7 @@ export default function CricketProjectileSimulator() {
       if (simulationState.current.isFlying) {
         const targetX = Math.max(20, Math.min(70, simulationState.current.position.x * 0.6 + 15));
         const targetY = Math.max(7, simulationState.current.maxHeight * 0.45);
-        
+
         cameraTarget.x += (targetX - cameraTarget.x) * deltaTime * 1.8;
         cameraTarget.y += (targetY - cameraTarget.y) * deltaTime * 1.8;
         updateCamera();
@@ -769,7 +767,7 @@ export default function CricketProjectileSimulator() {
           simulationState.current.position = { x: newX, y: 0.125, z: 0 };
           setCanLaunch(true);
           ballShadow.material.opacity = 0;
-          
+
           setStats(prev => ({
             ...prev,
             range: newX,
@@ -780,7 +778,7 @@ export default function CricketProjectileSimulator() {
           simulationState.current.maxHeight = Math.max(simulationState.current.maxHeight, newY);
 
           const currentVelY = simulationState.current.velocity.y - gravity * t;
-          
+
           setStats({
             velocityX: simulationState.current.velocity.x,
             velocityY: currentVelY,
@@ -809,7 +807,7 @@ export default function CricketProjectileSimulator() {
 
         // Ball spin
         const rotSpeed = Math.sqrt(
-          simulationState.current.velocity.x ** 2 + 
+          simulationState.current.velocity.x ** 2 +
           (simulationState.current.velocity.y - gravity * t) ** 2
         );
         ball.rotation.x += deltaTime * rotSpeed * 2.5;
@@ -844,25 +842,25 @@ export default function CricketProjectileSimulator() {
   // Update predicted path
   useEffect(() => {
     if (!predictedPathRef.current) return;
-    
+
     const rad = (angle * Math.PI) / 180;
     const vx = speed * Math.cos(rad);
     const vy = speed * Math.sin(rad);
-    
+
     const points = [];
     const totalTime = (2 * vy) / gravity;
     const steps = 120;
-    
+
     for (let i = 0; i <= steps; i++) {
       const t = (totalTime * i) / steps;
       const x = vx * t;
       const y = 1.2 + vy * t - 0.5 * gravity * t * t;
-      
+
       if (y >= 0.125) {
         points.push(new THREE.Vector3(x, y, 0));
       }
     }
-    
+
     predictedPathRef.current.geometry.setFromPoints(points);
     predictedPathRef.current.computeLineDistances();
   }, [angle, speed, gravity]);
@@ -875,7 +873,7 @@ export default function CricketProjectileSimulator() {
       const initialRotZ = batRef.current.rotation.z;
       const initialRotX = batRef.current.rotation.x;
       let swingProgress = 0;
-      
+
       const swingInterval = setInterval(() => {
         swingProgress += 0.075;
         const swingAmount = Math.sin(swingProgress * Math.PI);
@@ -883,7 +881,7 @@ export default function CricketProjectileSimulator() {
         batRef.current.rotation.x = initialRotX + swingAmount * (Math.PI / 9);
         batRef.current.position.x = -0.55 + swingAmount * 0.85;
         batRef.current.position.y = 0.45 + swingAmount * 0.25;
-        
+
         if (swingProgress >= 1) {
           clearInterval(swingInterval);
           setTimeout(() => {
@@ -908,14 +906,14 @@ export default function CricketProjectileSimulator() {
         },
         maxHeight: 1.2
       };
-      
+
       if (trailRef.current?.geometry) {
         trailRef.current.geometry.setAttribute(
           'position',
           new THREE.Float32BufferAttribute([], 3)
         );
       }
-      
+
       setCanLaunch(false);
     }, 130);
   };
@@ -929,52 +927,20 @@ export default function CricketProjectileSimulator() {
       velocity: { x: 0, y: 0 },
       maxHeight: 1.2
     };
-    
+
     if (ballRef.current) {
       ballRef.current.position.set(0, 1.2, 0);
     }
-    
+
     if (trailRef.current?.geometry) {
       trailRef.current.geometry.setAttribute(
         'position',
         new THREE.Float32BufferAttribute([], 3)
       );
     }
-    
+
     setStats({ velocityX: 0, velocityY: 0, maxHeight: 0, range: 0, time: 0, currentHeight: 0 });
     setCanLaunch(true);
-  };
-
-  const handleExportCSV = () => {
-    const timestamp = new Date().toLocaleString();
-    const csvContent = [
-      ['Cricket Projectile Motion Simulation Data'],
-      ['Generated:', timestamp],
-      [''],
-      ['Parameter', 'Value', 'Unit'],
-      ['Launch Angle', angle, '°'],
-      ['Initial Velocity', speed, 'm/s'],
-      ['Gravity', gravity, 'm/s²'],
-      [''],
-      ['Results', '', ''],
-      ['Velocity X', stats.velocityX.toFixed(2), 'm/s'],
-      ['Velocity Y', stats.velocityY.toFixed(2), 'm/s'],
-      ['Max Height', stats.maxHeight.toFixed(2), 'm'],
-      ['Range (Distance)', stats.range.toFixed(2), 'm'],
-      ['Flight Time', stats.time.toFixed(2), 's'],
-      ['Current Height', stats.currentHeight.toFixed(2), 'm']
-    ].map(row => row.join(',')).join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `cricket_simulation_${Date.now()}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
   };
 
   return (
@@ -993,15 +959,6 @@ export default function CricketProjectileSimulator() {
             </p>
           </div>
           <div className="flex gap-2 pointer-events-auto">
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={handleExportCSV}
-              className="p-2.5 bg-slate-800/80 backdrop-blur-md border border-green-500/40 rounded-lg hover:bg-slate-700/80 transition-colors shadow-xl"
-              title="Export to CSV"
-            >
-              <Download size={18} className="text-green-400" />
-            </motion.button>
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
@@ -1051,33 +1008,33 @@ export default function CricketProjectileSimulator() {
 
         {/* Real-time Stats */}
         <div className="grid grid-cols-5 gap-2.5 max-w-4xl mb-3">
-          <Stat 
-            label="Horizontal Speed" 
-            value={stats.velocityX.toFixed(1)} 
+          <Stat
+            label="Horizontal Speed"
+            value={stats.velocityX.toFixed(1)}
             unit="m/s"
             description="Constant horizontal speed throughout flight (no air resistance in this model)"
           />
-          <Stat 
-            label="Vertical Speed" 
-            value={stats.velocityY.toFixed(1)} 
+          <Stat
+            label="Vertical Speed"
+            value={stats.velocityY.toFixed(1)}
             unit="m/s"
             description="Vertical speed decreases due to gravity pulling the ball down"
           />
-          <Stat 
-            label="Current Height" 
-            value={stats.currentHeight.toFixed(1)} 
+          <Stat
+            label="Current Height"
+            value={stats.currentHeight.toFixed(1)}
             unit="m"
             description="Ball's current height above ground level"
           />
-          <Stat 
-            label="Max Height" 
-            value={stats.maxHeight.toFixed(1)} 
+          <Stat
+            label="Max Height"
+            value={stats.maxHeight.toFixed(1)}
             unit="m"
             description="Peak height reached - apex of the parabola"
           />
-          <Stat 
-            label="Range" 
-            value={stats.range.toFixed(1)} 
+          <Stat
+            label="Range"
+            value={stats.range.toFixed(1)}
             unit="m"
             description="Total horizontal distance traveled (boundary is at 75m!)"
           />
@@ -1085,64 +1042,65 @@ export default function CricketProjectileSimulator() {
 
         <div className="flex-1" />
 
-        {/* Control Panel - Positioned at bottom-left */}
-        <div className="flex justify-start items-end pointer-events-auto">
-          <div className="bg-gradient-to-br from-slate-900/95 to-slate-800/95 backdrop-blur-xl border-2 border-green-500/50 rounded-xl p-3 w-full max-w-xs space-y-2.5 shadow-2xl">
-            <div className="space-y-2">
-              <Slider 
-                label="Launch Angle (θ)" 
-                value={angle} 
-                onChange={setAngle} 
-                min={0} 
-                max={90} 
-                step={1} 
+        {/* Control Panel */}
+        <div className="flex justify-center pointer-events-auto">
+          <div className="bg-gradient-to-br from-slate-900/95 to-slate-800/95 backdrop-blur-xl border-2 border-green-500/50 rounded-2xl p-6 w-full max-w-5xl space-y-5 shadow-2xl">
+            <div className="grid grid-cols-3 gap-6">
+              <Slider
+                label="Launch Angle (θ)"
+                value={angle}
+                onChange={setAngle}
+                min={0}
+                max={90}
+                step={1}
                 unit="°"
-                description=""
+                description="The angle at which the batsman hits the ball. 45° gives maximum range! Try different angles to see the effect on trajectory."
               />
-              <Slider 
-                label="Shot Speed (v₀)" 
-                value={speed} 
-                onChange={setSpeed} 
-                min={5} 
-                max={50} 
-                step={0.5} 
+              <Slider
+                label="Shot Speed (v₀)"
+                value={speed}
+                onChange={setSpeed}
+                min={5}
+                max={50}
+                step={0.5}
                 unit="m/s"
-                description=""
+                description="How hard the batsman hits! Higher speed means both greater distance and height. Professional shots can exceed 40 m/s!"
               />
-              <Slider 
-                label="Gravity (g)" 
-                value={gravity} 
-                onChange={setGravity} 
-                min={1} 
-                max={20} 
-                step={0.1} 
+              <Slider
+                label="Gravity (g)"
+                value={gravity}
+                onChange={setGravity}
+                min={1}
+                max={20}
+                step={0.1}
                 unit="m/s²"
-                description=""
+                description="Earth's gravity is 9.8 m/s². Try changing it to see how the ball would travel on different planets!"
               />
             </div>
 
-            <div className="border-t border-slate-700/50 pt-2 space-y-2">
+            <div className="border-t border-slate-700/50 pt-5 space-y-4">
               <motion.button
-                whileHover={{ scale: canLaunch ? 1.02 : 1 }}
+                whileHover={{ scale: canLaunch ? 1.01 : 1 }}
                 whileTap={{ scale: canLaunch ? 0.98 : 1 }}
                 onClick={handleLaunch}
                 disabled={!canLaunch}
-                className={`w-full py-2 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-xl ${
-                  canLaunch
-                    ? 'bg-gradient-to-r from-green-600 via-emerald-500 to-green-600 hover:from-green-500 hover:to-emerald-400 text-white shadow-green-500/50'
-                    : 'bg-slate-700/60 text-slate-500 cursor-not-allowed'
-                }`}
+                className={`w-full py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-3 transition-all shadow-2xl ${canLaunch
+                  ? 'bg-gradient-to-r from-green-600 via-emerald-500 to-green-600 hover:from-green-500 hover:to-emerald-400 text-white shadow-green-500/50'
+                  : 'bg-slate-700/60 text-slate-500 cursor-not-allowed'
+                  }`}
               >
-                <Play size={16} fill="currentColor" />
-                {canLaunch ? '🏏 HIT SHOT!' : '🏏 IN FLIGHT...'}
+                <Play size={24} fill="currentColor" />
+                {canLaunch ? '🏏 HIT THE SHOT!' : '🏏 BALL IN FLIGHT...'}
               </motion.button>
 
-              <div className="flex flex-col gap-1 text-[10px]">
-                <div className="flex gap-2 text-green-300">
-                  <span>⏱️ <span className="font-mono font-bold text-white">{stats.time.toFixed(2)}s</span></span>
-                  <span>🔴 Actual</span>
-                  <span>🟡 Predicted</span>
+              <div className="flex justify-between items-center text-xs">
+                <div className="flex gap-6 text-green-300">
+                  <span>⏱️ Flight Time: <span className="font-mono font-bold text-white">{stats.time.toFixed(2)}s</span></span>
+                  <span>🔴 Red = Actual Path</span>
+                  <span>🟡 Yellow = Predicted Path</span>
+                  <span>📏 Markers every 10m</span>
                 </div>
+                <span className="text-slate-400">🖱️ Drag to rotate • Scroll to zoom • Explore the stadium!</span>
               </div>
             </div>
           </div>
