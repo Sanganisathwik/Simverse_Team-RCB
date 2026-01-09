@@ -790,11 +790,15 @@ export default function ProjectileSimulator() {
       `}</style>
 
       {/* 3D Canvas */}
-      <div className="absolute inset-0">
+      <div className="absolute inset-0" style={{ background: '#87CEEB' }}>
         <Canvas
           camera={{ position: [-5, 10, 20], fov: 60 }}
           shadows
-          gl={{ antialias: true }}
+          gl={{ antialias: true, alpha: false }}
+          dpr={[1, 2]}
+          onCreated={(state) => {
+            state.gl.setClearColor('#87CEEB');
+          }}
         >
           <Scene
             angle={angle}
