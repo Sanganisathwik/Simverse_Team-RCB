@@ -1,11 +1,21 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, Suspense } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Grid, Trail } from '@react-three/drei';
 import * as THREE from 'three';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Play, RotateCcw, Settings2 } from 'lucide-react';
+
+// Loading Component
+const CanvasLoader = () => (
+  <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-sky-400 to-sky-200">
+    <div className="text-center">
+      <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-white mb-4 mx-auto"></div>
+      <p className="text-white font-bold">Loading Cricket Scene...</p>
+    </div>
+  </div>
+);
 
 // Glass Panel Component
 const GlassPanel = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
@@ -791,35 +801,39 @@ export default function ProjectileSimulator() {
 
       {/* 3D Canvas */}
       <div className="absolute inset-0" style={{ background: '#87CEEB' }}>
-        <Canvas
-          camera={{ position: [-5, 10, 20], fov: 60 }}
-          shadows
-          gl={{ antialias: true, alpha: false }}
-          dpr={[1, 2]}
-          onCreated={(state) => {
-            state.gl.setClearColor('#87CEEB');
-          }}
-        >
-          <Scene
-            angle={angle}
-            velocity={velocity}
-            gravity={gravity}
-            bounce={bounce}
-            onStatsUpdate={setStats}
-            isLaunched={isLaunched}
-            onLaunchComplete={() => setCanLaunch(true)}
-          />
-          <OrbitControls
-            enablePan={true}
-            enableZoom={true}
-            enableRotate={true}
-            minDistance={8}
-            maxDistance={60}
-            target={[8, 3, 0]}
-            enableDamping
-            dampingFactor={0.05}
-          />
-        </Canvas>
+        <Suspense fallback={<CanvasLoader />}>
+          <Canvas
+            camera={{ position: [-5, 10, 20], fov: 60 }}
+            shadows
+            gl={{ antialias: true, alpha: false }}
+            dpr={[1, 2]}
+            onCreated={(state) => {
+              state.gl.setClearColor('#87CEEB');
+            }}
+          >
+            <Suspense fallback={null}>
+              <Scene
+                angle={angle}
+                velocity={velocity}
+                gravity={gravity}
+                bounce={bounce}
+                onStatsUpdate={setStats}
+                isLaunched={isLaunched}
+                onLaunchComplete={() => setCanLaunch(true)}
+              />
+              <OrbitControls
+                enablePan={true}
+                enableZoom={true}
+                enableRotate={true}
+                minDistance={8}
+                maxDistance={60}
+                target={[8, 3, 0]}
+                enableDamping
+                dampingFactor={0.05}
+              />
+            </Suspense>
+          </Canvas>
+        </Suspense>
       </div>
 
       {/* UI Overlay */}
